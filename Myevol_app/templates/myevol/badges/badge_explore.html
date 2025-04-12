@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Explorer les badges{% endblock %}
+
+{% block content %}
+<h2 class="fw-bold mb-4">🌟 Explorer les badges</h2>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+  {% for badge in templates %}
+    <div class="col">
+      <div class="card shadow-sm h-100 {% if not badge.obtenu %}opacity-50{% endif %}">
+        <div class="card-body text-center">
+          <div class="fs-1 mb-2">{{ badge.icon }}</div>
+          <h5 class="card-title">{{ badge.name }}</h5>
+          <p class="card-text">{{ badge.description }}</p>
+          <p class="small text-muted">{{ badge.condition }}</p>
+          {% if badge.obtenu %}
+            <span class="badge bg-success">Débloqué ✅</span>
+          {% else %}
+            <span class="badge bg-secondary">À débloquer 🔒</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

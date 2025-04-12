@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4 fw-bold">Journal de Progression</h2>
+  <ul class="nav nav-tabs">
+    <li class="nav-item">
+      <a class="nav-link active" href="#">Journal</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#">Statistiques</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#">Objectifs</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#">Paramètres</a>
+    </li>
+  </ul>
+
+  <div class="card mt-3 shadow-sm">
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label for="contenu" class="form-label">Qu'avez-vous accompli aujourd'hui ?</label>
+          <textarea class="form-control" id="contenu" name="contenu" rows="3" placeholder="Décrivez votre accomplissement..."></textarea>
+        </div>
+
+        <div class="row align-items-center mb-3">
+          <div class="col-md-4">
+            <label for="categorie" class="form-label">Catégorie</label>
+            <select class="form-select" name="categorie" id="categorie">
+              {% for categorie in categories %}
+              <option value="{{ categorie.id }}">{{ categorie.nom }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="humeur" class="form-label">Humeur</label>
+            <input type="range" class="form-range" min="0" max="10" step="1" id="humeur" name="humeur" oninput="updateEmoji(this.value)">
+            <div id="emoji-display" class="text-center fs-4">😐</div>
+          </div>
+          <div class="col-md-4 text-end">
+            <label class="form-label d-block">&nbsp;</label>
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <h4 class="mt-5">Vos moments de fierté</h4>
+  {% for entry in journal_entries %}
+  <div class="card my-2 shadow-sm">
+    <div class="card-body">
+      <p class="mb-1">{{ entry.contenu }}</p>
+      <div class="d-flex justify-content-between small text-muted">
+        <div>{{ entry.categorie.nom }}</div>
+        <div>Humeur : {{ entry.humeur }} / 10</div>
+        <div>{{ entry.date_creation|date:"d/m/Y" }}</div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <p class="text-muted">Aucune entrée pour le moment.</p>
+  {% endfor %}
+</div>
+
+<script>
+function updateEmoji(value) {
+  const emoji = [
+    "😞", "😟", "😕", "😐", "🙂", "😊", "😌", "😁", "😄", "😃", "🤩"
+  ];
+  document.getElementById('emoji-display').innerText = emoji[value];
+}
+</script>
+{% endblock %}

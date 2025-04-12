@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+
+<h2 class="fw-bold mb-4">🔔 Mes notifications</h2>
+
+{% if notifications %}
+  <ul class="list-group">
+    {% for notif in notifications %}
+      <li class="list-group-item d-flex justify-content-between align-items-start">
+        <div>
+          {{ notif.message }}
+          <br>
+          <small class="text-muted">{{ notif.created_at|date:"d/m/Y H:i" }}</small>
+        </div>
+        {% if not notif.is_read %}
+          <span class="badge bg-warning text-dark">Non lue</span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-muted">Aucune notification pour le moment.</p>
+{% endif %}
+
+{% endblock %}

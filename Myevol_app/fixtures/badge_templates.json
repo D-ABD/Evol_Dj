@@ -1,0 +1,53 @@
+[
+    {
+      "model": "Myevol_app.badgetemplate",
+      "pk": 1,
+      "fields": {
+        "name": "Première entrée",
+        "description": "Bravo pour ta première entrée 🎉",
+        "icon": "🌱",
+        "condition": "Créer une première entrée de journal"
+      }
+    },
+    {
+      "model": "Myevol_app.badgetemplate",
+      "pk": 2,
+      "fields": {
+        "name": "7 jours d'activité",
+        "description": "1 semaine d'activité, continue comme ça 🚀",
+        "icon": "🔥",
+        "condition": "Ajouter au moins 1 entrée par jour pendant 7 jours"
+      }
+    },
+    {
+      "model": "Myevol_app.badgetemplate",
+      "pk": 3,
+      "fields": {
+        "name": "Niveau 1",
+        "description": "Tu as atteint le niveau 1 💪",
+        "icon": "🏆",
+        "condition": "Atteindre le niveau 1 (1 entrée)"
+      }
+    },
+    {
+      "model": "Myevol_app.badgetemplate",
+      "pk": 4,
+      "fields": {
+        "name": "Niveau 2",
+        "description": "Tu as atteint le niveau 2 💪",
+        "icon": "🏆",
+        "condition": "Atteindre le niveau 2 (5 entrées)"
+      }
+    },
+    {
+      "model": "Myevol_app.badgetemplate",
+      "pk": 5,
+      "fields": {
+        "name": "Niveau 3",
+        "description": "Tu as atteint le niveau 3 💪",
+        "icon": "🏆",
+        "condition": "Atteindre le niveau 3 (10 entrées)"
+      }
+    }
+  ]
+  

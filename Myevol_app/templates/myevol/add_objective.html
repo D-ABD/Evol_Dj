@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Nouvel Objectif - MyEvol{% endblock %}
+
+{% block content %}
+<h2 class="fw-bold mb-4">🎯 Ajouter un nouvel objectif</h2>
+
+<form method="post" class="card shadow p-4 bg-white">
+  {% csrf_token %}
+  {% for field in form %}
+    <div class="mb-3">
+      <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}
+        <div class="form-text">{{ field.help_text }}</div>
+      {% endif %}
+      {% if field.errors %}
+        <div class="text-danger small">{{ field.errors|join:", " }}</div>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  <button type="submit" class="btn btn-success">💾 Enregistrer</button>
+  <a href="{% url 'myevol:dashboard' %}" class="btn btn-outline-secondary">Annuler</a>
+</form>
+{% endblock %}

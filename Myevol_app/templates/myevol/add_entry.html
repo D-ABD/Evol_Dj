@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load form_tags %}
+
+{% block title %}Ajouter une entrée - MyEvol{% endblock %}
+{% block content %}
+
+<h2 class="fw-bold mb-4">📝 Nouvelle entrée dans le journal</h2>
+
+<form method="post" class="card shadow-sm p-4">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label for="id_category" class="form-label">Catégorie</label>
+    {{ form.category|add_class:"form-control" }}
+  </div>
+
+  <div class="mb-3">
+    <label for="id_mood" class="form-label">Humeur (1 à 10)</label>
+    {{ form.mood|add_class:"form-select" }}
+  </div>
+
+  <div class="mb-3">
+    <label for="id_content" class="form-label">Contenu</label>
+    {{ form.content|add_class:"form-control" }}
+  </div>
+
+  <div class="d-flex justify-content-between">
+    <a href="{% url 'myevol:dashboard' %}" class="btn btn-secondary">Retour</a>
+    <button type="submit" class="btn btn-primary">Ajouter ✅</button>
+  </div>
+</form>
+
+{% endblock %}

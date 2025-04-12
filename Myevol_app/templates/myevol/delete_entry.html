@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Supprimer l'entrée - MyEvol{% endblock %}
+{% block content %}
+<h2 class="fw-bold mb-4 text-danger">Supprimer l'entrée</h2>
+
+<div class="alert alert-warning">
+  <p>Tu es sur le point de <strong>supprimer cette entrée</strong> :</p>
+  <p><em>{{ entry.content }}</em></p>
+  <p class="text-muted">Catégorie : {{ entry.category }} | Humeur : {{ entry.mood }}/10 | {{ entry.created_at|date:"d/m/Y H:i" }}</p>
+  <p>Cette action est <strong>irrevocable</strong>.</p>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-danger">Oui, supprimer</button>
+  <a href="{% url 'myevol:dashboard' %}" class="btn btn-secondary">Annuler</a>
+</form>
+{% endblock %}

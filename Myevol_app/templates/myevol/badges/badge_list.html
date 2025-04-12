@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Mes badges - MyEvol{% endblock %}
+
+{% block content %}
+<h2 class="fw-bold mb-4">🏅 Mes badges</h2>
+
+{% if badges %}
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for badge in badges %}
+      <div class="col">
+        <div class="card shadow-sm h-100">
+          <div class="card-body text-center">
+            <div class="fs-1 mb-2">{{ badge.icon }}</div>
+            <h5 class="card-title">{{ badge.name }}</h5>
+            <p class="text-muted small">{{ badge.date_obtenue|date:"d/m/Y" }}</p>
+            <p class="card-text">{{ badge.description }}</p>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-muted">Aucun badge obtenu pour le moment.</p>
+{% endif %}
+{% endblock %}

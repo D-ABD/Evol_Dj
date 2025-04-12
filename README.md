@@ -74,6 +74,8 @@ Créer un super utilisateur (admin) :
     Version mobile
     PWA ou version native via React Native 
 
-🧠 Auteur
-    Développé avec ❤️ par @Adserv    # Evol_Dj
+🧠 Développé avec ❤️ par @Adserv    
 # Evol_Dj
+
+
+
