@@ -79,3 +79,70 @@ Créer un super utilisateur (admin) :
 
 
 
+
+
+
+Ajoute une méthode __repr__ dans les modèles principaux (utile pour debug shell, admin ou tests).
+
+help_text dans les champs des modèles : pratique pour l’interface d’admin ou les formulaires auto-générés.
+
+Tests automatiques : si ce n’est pas encore fait, je peux t’aider à écrire des tests unitaires (TestCase) pour chaque modèle.
+
+Méthode get_absolute_url : utile si tu as des vues DetailView (ou dans l’admin, par exemple).
+
+Badge "7 jours d'activité"
+
+Ce badge est attribué ici mais n'est pas défini dans BadgeTemplate.check_unlock(). Tu peux :
+
+L’ajouter dans BadgeTemplate + dans la méthode check_unlock()
+
+Ou le garder ici comme badge "hors système", à toi de choisir
+
+Unicité des signaux :
+
+Tu as deux signaux @receiver(post_save, sender=Notification) ➜ tu pourrais les fusionner :
+award_badge() vs Badge.save()
+
+Tu as un léger chevauchement : award_badge() crée une notification, mais Badge.save() aussi ➜ tu pourrais soit :
+
+Supprimer la notification dans award_badge() (et laisser save() s’en charger)
+
+Ou désactiver la création auto dans save() si l’appel vient de award_badge()
+
+Ou ajouter un flag skip_notification=False dans Badge.save() si besoin
+
+Assure-toi que ces données sont bien importées dans la base via un loaddata, un script ou dans une tâche initial_setup avec BadgeTemplate.objects.get_or_create(...).
+
+Évite les doublons name dans cette liste, sinon Django lèvera une erreur d’unicité (ce qui n’est pas le cas ici).
+
+Pour que cela fonctionne avec Celery Beat
+Il te manque juste l’enregistrement de la tâche planifiée dans l’admin Django, ou via un script comme :
+
+Exemple avec django_celery_beat :
+bash
+Copier
+Modifier
+python manage.py shell
+python
+Copier
+Modifier
+from django_celery_beat.models import PeriodicTask, IntervalSchedule
+
+# Toutes les 10 minutes par exemple
+schedule, _ = IntervalSchedule.objects.get_or_create(every=10, period=IntervalSchedule.MINUTES)
+
+PeriodicTask.objects.get_or_create(
+    interval=schedule,
+    name='Envoyer les notifications programmées',
+    task='myevol_app.tasks.send_scheduled_notifications',
+)
+Remplace "myevol_app.tasks..." par le chemin exact vers ton fichier contenant la tâche.
+
+✅ Tu peux aller plus loin ensuite :
+Ajouter un envoi réel (mail, push, etc.)
+
+Filtrer par notif_type
+
+Logger plus finement les erreurs
+
+Ajouter les loggs aux models

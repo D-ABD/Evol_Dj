@@ -1,10 +1,6 @@
 {% extends "base.html" %}
-
+{% block title %}Accueil{% endblock %}
 {% block content %}
-<div class="container text-center mt-5">
-  <h1 class="display-4">Bienvenue sur MyEvol 🌱</h1>
-  <p class="lead">Suivez votre progression, humeur et objectifs au quotidien.</p>
-  <a href="{% url 'myevol:login' %}" class="btn btn-primary btn-lg">Se connecter</a>
-  <a href="{% url 'myevol:register' %}" class="btn btn-outline-secondary btn-lg">Créer un compte</a>
-</div>
+  <h1 class="mb-4">👋 Bienvenue sur MyEvol</h1>
+  <p>Connectez-vous ou explorez vos statistiques.</p>
 {% endblock %}

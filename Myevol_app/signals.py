@@ -5,7 +5,13 @@ from datetime import timedelta
 import logging
 from django.db.models.signals import post_delete
 
-from .models import JournalEntry, Badge, Notification, DailyStat, User, UserPreference
+from .models.badge_model import Badge
+from .models.journal_model import JournalEntry
+from .models.notification_model import Notification
+from .models.stats_model import DailyStat
+from .models.userPreference_model import UserPreference
+from .models.user_model import User
+
 from .utils.levels import get_user_level  # Cette fonction calcule le niveau d'un utilisateur
 
 # Configuration du logger pour tracer les événements importants
