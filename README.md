@@ -79,7 +79,12 @@ Créer un super utilisateur (admin) :
 
 
 
+Ajout de fonctionnalités:
 
+Export des données au format CSV/PDF
+Système de partage/compétition entre utilisateurs
+Intégration avec d'autres applications de santé/fitness
+AJout un tchat et un forum
 
 
 Ajoute une méthode __repr__ dans les modèles principaux (utile pour debug shell, admin ou tests).

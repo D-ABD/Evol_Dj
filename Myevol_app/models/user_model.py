@@ -59,8 +59,25 @@ class User(AbstractUser):
         }
     }
     """
+    """
+    ...
+    Ajouts personnalisés :
+    - avatar_url : URL de l’avatar (image de profil)
+    - xp : nombre de points d’expérience accumulés
+    - level : calculé automatiquement en fonction des entrées (property)
+
+    API Endpoints recommandés :
+    - /api/users/me/
+    - /api/users/me/dashboard/
+    - /api/users/me/stats/
+    - /api/users/me/xp/
+    - /api/users/me/avatar/
+    
+    """
     email = models.EmailField(unique=True)  # Assure que chaque email est unique
     longest_streak = models.PositiveIntegerField(default=0, editable=False)  # Plus longue série de jours consécutifs
+    avatar_url = models.URLField(blank=True, null=True, help_text="Lien vers l'image de l'avatar")
+    xp = models.PositiveIntegerField(default=0, help_text="Points d'expérience cumulés")
 
     # 🔐 Utilisation de l'email comme identifiant principal
     USERNAME_FIELD = 'email'
@@ -499,3 +516,21 @@ class User(AbstractUser):
             "mood_trend": self.mood_trend(7),
             "categories": self.entries_by_category(7)
         }
+    
+    def add_xp(self, amount):
+        """
+        Ajoute des points d’expérience à l’utilisateur.
+
+        Args:
+            amount (int): Nombre de points à ajouter.
+
+        Utilisation dans l’API :
+            À appeler après certaines actions utilisateurs (ex: ajout d’entrée, objectif atteint).
+            Permet de créer un système de progression basé sur le comportement utilisateur.
+        
+        Exemple :
+            user.add_xp(10)
+        """
+        self.xp += amount
+        self.save(update_fields=['xp'])
+

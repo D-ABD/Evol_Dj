@@ -111,21 +111,52 @@ class Badge(models.Model):
 # 🧩 BadgeTemplate : tous les badges définissables
 class BadgeTemplate(models.Model):
     """
-    Modèle définissant les différents badges disponibles dans l'application.
-    Contient les critères d'attribution des badges aux utilisateurs.
+        Modèle définissant les différents badges disponibles dans l'application.
+        Contient les critères d'attribution des badges aux utilisateurs.
+        
+        Chaque template définit un type de badge qui peut être débloqué selon des conditions
+        spécifiques (nombre d'entrées, régularité, humeur, etc.). Le modèle inclut 
+        également des éléments visuels pour enrichir l'expérience utilisateur.
+        
+        API Endpoints suggérés:
+        - GET /api/badges/templates/ - Liste tous les templates de badges
+        - GET /api/badges/templates/{id}/ - Détails d'un template spécifique
+        - GET /api/badges/templates/categories/ - Templates groupés par catégorie
+        - GET /api/badges/templates/{id}/progress/ - Progression de l'utilisateur vers ce badge
+        
+        Exemple de sérialisation JSON:
+        {
+            "id": 3,
+            "name": "Régulier",
+            "description": "Tu as écrit chaque jour pendant 5 jours ✍️",
+            "icon": "📅",
+            "condition": "5 jours consécutifs avec entrées",
+            "level": 1,
+            "color_theme": "#4CAF50",
+            "animation_url": "https://cdn.myevol.app/animations/regular.json",
+            "progress": {
+                "percent": 80,
+                "current": 4,
+                "target": 5,
+                "unlocked": false
+            }
+        }
     
-    API Endpoints suggérés:
-    - GET /api/badges/templates/ - Liste tous les templates de badges
-    - GET /api/badges/templates/{id}/ - Détails d'un template spécifique
-    - GET /api/badges/templates/categories/ - Templates groupés par catégorie
-    - GET /api/badges/templates/{id}/progress/ - Progression de l'utilisateur vers ce badge
     """
+
     name = models.CharField(max_length=100, unique=True)  # Nom unique du badge
     description = models.TextField()                      # Description du badge
     icon = models.CharField(max_length=100)               # Icône (chemin ou identifiant)
     condition = models.CharField(max_length=255)          # Description de la condition d'obtention
     level = models.PositiveIntegerField(null=True, blank=True)  # Niveau du badge (optionnel)
 
+
+    animation_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text="Lien vers une animation Lottie ou GIF pour enrichir l'affichage du badge"
+    )
+    color_theme = models.CharField(default="#FFD700", max_length=20)  # couleur du badge
     class Meta:
         verbose_name = "Modèle de badge"
         verbose_name_plural = "Modèles de badges"
