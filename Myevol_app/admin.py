@@ -3,11 +3,20 @@ from .models import JournalEntry, Objective, User
 from django.contrib.auth.admin import UserAdmin
 from django.contrib import admin
 from .models import Badge, BadgeTemplate
+from django.contrib import admin
+from .models import Notification
 
 admin.site.register(User, UserAdmin)
 admin.site.register(JournalEntry)
 admin.site.register(Objective)
 
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'notif_type', 'message', 'is_read', 'is_archived', 'created_at')
+    list_filter = ('notif_type', 'is_read', 'is_archived', 'created_at')
+    search_fields = ('message',)
 
 
 @admin.register(BadgeTemplate)

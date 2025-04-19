@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'Myevol_app',
+    'django_celery_beat',
+
 
 ]
 
@@ -148,3 +150,8 @@ LOGIN_URL = 'myevol:login'
 LOGIN_REDIRECT_URL = 'myevol:dashboard'
 LOGOUT_REDIRECT_URL = 'myevol:login'
 
+# CELERY CONFIG
+CELERY_BROKER_URL = "redis://localhost:6379/0"  # Assure-toi que Redis tourne
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'

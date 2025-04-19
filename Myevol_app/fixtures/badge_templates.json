@@ -1,53 +1,174 @@
 [
-    {
-      "model": "Myevol_app.badgetemplate",
-      "pk": 1,
-      "fields": {
-        "name": "Première entrée",
-        "description": "Bravo pour ta première entrée 🎉",
-        "icon": "🌱",
-        "condition": "Créer une première entrée de journal"
-      }
-    },
-    {
-      "model": "Myevol_app.badgetemplate",
-      "pk": 2,
-      "fields": {
-        "name": "7 jours d'activité",
-        "description": "1 semaine d'activité, continue comme ça 🚀",
-        "icon": "🔥",
-        "condition": "Ajouter au moins 1 entrée par jour pendant 7 jours"
-      }
-    },
-    {
-      "model": "Myevol_app.badgetemplate",
-      "pk": 3,
-      "fields": {
-        "name": "Niveau 1",
-        "description": "Tu as atteint le niveau 1 💪",
-        "icon": "🏆",
-        "condition": "Atteindre le niveau 1 (1 entrée)"
-      }
-    },
-    {
-      "model": "Myevol_app.badgetemplate",
-      "pk": 4,
-      "fields": {
-        "name": "Niveau 2",
-        "description": "Tu as atteint le niveau 2 💪",
-        "icon": "🏆",
-        "condition": "Atteindre le niveau 2 (5 entrées)"
-      }
-    },
-    {
-      "model": "Myevol_app.badgetemplate",
-      "pk": 5,
-      "fields": {
-        "name": "Niveau 3",
-        "description": "Tu as atteint le niveau 3 💪",
-        "icon": "🏆",
-        "condition": "Atteindre le niveau 3 (10 entrées)"
-      }
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Niveau 1",
+      "description": "Tu as atteint le niveau 1 💪",
+      "icon": "🥉",
+      "condition": "Atteindre 1 entrée"
     }
-  ]
-  
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Niveau 2",
+      "description": "Tu as atteint le niveau 2 💪",
+      "icon": "🥉",
+      "condition": "Atteindre 5 entrées"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Niveau 3",
+      "description": "Tu as atteint le niveau 3 💪",
+      "icon": "🥈",
+      "condition": "Atteindre 10 entrées"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Niveau 4",
+      "description": "Tu as atteint le niveau 4 💪",
+      "icon": "🥈",
+      "condition": "Atteindre 20 entrées"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Niveau 5",
+      "description": "Tu as atteint le niveau 5 💪",
+      "icon": "🥇",
+      "condition": "Atteindre 35 entrées"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Niveau 6",
+      "description": "Tu as atteint le niveau 6 💪",
+      "icon": "🥇",
+      "condition": "Atteindre 50 entrées"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Niveau 7",
+      "description": "Tu as atteint le niveau 7 💪",
+      "icon": "🏆",
+      "condition": "Atteindre 75 entrées"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Niveau 8",
+      "description": "Tu as atteint le niveau 8 💪",
+      "icon": "🏆",
+      "condition": "Atteindre 100 entrées"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Niveau 9",
+      "description": "Tu as atteint le niveau 9 💪",
+      "icon": "🏅",
+      "condition": "Atteindre 150 entrées"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Niveau 10",
+      "description": "Tu as atteint le niveau 10 💪",
+      "icon": "🎖️",
+      "condition": "Atteindre 200 entrées"
+    }
+  },
+
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Première entrée",
+      "description": "Bravo pour ta première entrée 🎉",
+      "icon": "🌱",
+      "condition": "Créer une première entrée de journal"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Régulier",
+      "description": "Bravo pour ta régularité sur 5 jours consécutifs !",
+      "icon": "📅",
+      "condition": "5 jours consécutifs avec au moins une entrée"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Discipline",
+      "description": "La discipline est ta force, continue comme ça !",
+      "icon": "🧘‍♂️",
+      "condition": "10 jours consécutifs d’entrées"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Résilience",
+      "description": "Ta constance forge ta progression",
+      "icon": "💎",
+      "condition": "15 jours consécutifs d’entrées"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Légende du Journal",
+      "description": "Une légende est née : 30 jours d’affilée !",
+      "icon": "🔥",
+      "condition": "30 jours consécutifs d’entrées"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Ambassadeur d’humeur",
+      "description": "Tu rayonnes de positivité !",
+      "icon": "😄",
+      "condition": "Moyenne d’humeur ≥ 9 sur les 7 derniers jours"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Productivité",
+      "description": "Journée ultra-productive !",
+      "icon": "⚡",
+      "condition": "Ajouter 3 entrées en une seule journée"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Objectif rempli !",
+      "description": "Tu avances avec clarté et détermination.",
+      "icon": "✅",
+      "condition": "Tous les objectifs actuels sont atteints"
+    }
+  },
+  {
+    "model": "Myevol_app.badgetemplate",
+    "fields": {
+      "name": "Persévérance",
+      "description": "Tu montes pas à pas vers les sommets.",
+      "icon": "🏔️",
+      "condition": "Atteindre 100 entrées"
+    }
+  }
+]

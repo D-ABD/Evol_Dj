@@ -21,6 +21,12 @@ from django.db.models import Count
 from .models import Objective
 
 
+
+def home_view(request):
+    if request.user.is_authenticated:
+        return redirect("myevol:dashboard")
+    return render(request, "myevol/home.html")
+
 # Formulaire d'inscription personnalisé
 class RegisterForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput)

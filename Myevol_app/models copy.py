@@ -5,10 +5,6 @@ from django.contrib.auth.models import AbstractUser
 from collections import defaultdict
 from django.conf import settings
 from django.db.models import Avg, Count
-from django.core.validators import MinValueValidator, MaxValueValidator
-from django.core.exceptions import ValidationError
-from django.utils.functional import cached_property
-
 
 # 👤 Utilisateur personnalisé
 class User(AbstractUser):
@@ -18,13 +14,6 @@ class User(AbstractUser):
     pour l'application de suivi personnel.
     """
     email = models.EmailField(unique=True)  # Assure que chaque email est unique
-    # Stocke la plus longue série de jours consécutifs avec des entrées
-    longest_streak = models.PositiveIntegerField(default=0, editable=False)
-
-    class Meta:
-        verbose_name = "Utilisateur"
-        verbose_name_plural = "Utilisateurs"
-        ordering = ['-date_joined']
 
     def __str__(self):
         """Représentation en chaîne de caractères de l'utilisateur"""
@@ -37,72 +26,58 @@ class User(AbstractUser):
         """
         return self.entries.count()
 
-    def mood_average(self, days=7, reference_date=None):
+    def mood_average(self, days=7):
         """
         Calcule la moyenne d'humeur sur les X derniers jours.
         
         Args:
             days (int): Nombre de jours à considérer pour le calcul
-            reference_date (date, optional): Date de référence (maintenant par défaut)
             
         Returns:
             float: Moyenne d'humeur arrondie à 1 décimale, ou None si aucune entrée
         """
-        if reference_date is None:
-            reference_date = now()
-            
-        entries = self.entries.filter(created_at__gte=reference_date - timedelta(days=days))
-        avg = entries.aggregate(avg=Avg('mood'))['avg']
-        return round(avg, 1) if avg is not None else None
+        entries = self.entries.filter(created_at__gte=now() - timedelta(days=days))
+        if entries.exists():
+            return round(sum(entry.mood for entry in entries) / entries.count(), 1)
+        return None
 
-    def current_streak(self, reference_date=None):
+    def current_streak(self):
         """
         Calcule la série actuelle de jours consécutifs avec au moins une entrée.
         Vérifie jusqu'à 365 jours en arrière.
         
-        Args:
-            reference_date (date, optional): Date de référence (aujourd'hui par défaut)
-            
         Returns:
             int: Nombre de jours consécutifs avec une entrée
         """
-        if reference_date is None:
-            reference_date = now().date()
-            
+        today = now().date()
         streak = 0
         for i in range(0, 365):
-            day = reference_date - timedelta(days=i)
+            day = today - timedelta(days=i)
             if self.entries.filter(created_at__date=day).exists():
                 streak += 1
             else:
                 break
         return streak
 
-    def has_entries_every_day(self, last_n_days=7, reference_date=None):
+    def has_entries_every_day(self, last_n_days=7):
         """
         Vérifie si l'utilisateur a fait au moins une entrée chaque jour
         pendant les n derniers jours.
         
         Args:
             last_n_days (int): Nombre de jours à vérifier
-            reference_date (date, optional): Date de référence (aujourd'hui par défaut)
             
         Returns:
             bool: True si l'utilisateur a une entrée pour chaque jour de la période
         """
-        if reference_date is None:
-            reference_date = now().date()
-            
-        start_date = reference_date - timedelta(days=last_n_days - 1)
+        today = now().date()
+        start_date = today - timedelta(days=last_n_days - 1)
         days_with_entry = self.entries.filter(
-            created_at__date__gte=start_date,
-            created_at__date__lte=reference_date
+            created_at__date__gte=start_date
         ).values_list("created_at__date", flat=True).distinct()
-        
         expected_days = {start_date + timedelta(days=i) for i in range(last_n_days)}
-        return len(expected_days) == len(set(days_with_entry))
+        return expected_days.issubset(set(days_with_entry))
 
-    @cached_property
     def level(self):
         """
         Calcule le niveau de l'utilisateur basé sur le nombre d'entrées.
@@ -119,11 +94,8 @@ class User(AbstractUser):
         Parcourt tous les templates de badges et vérifie si l'utilisateur 
         remplit les conditions pour les badges qu'il n'a pas encore.
         """
-        # Préchargement des badges existants pour éviter des requêtes multiples
-        existing_badges = set(self.badges.values_list('name', flat=True))
-        
         for template in BadgeTemplate.objects.all():
-            if template.name not in existing_badges and template.check_unlock(self):
+            if template.check_unlock(self) and not self.badges.filter(name=template.name).exists():
                 Badge.objects.create(
                     user=self,
                     name=template.name,
@@ -141,36 +113,26 @@ class User(AbstractUser):
         """
         return not self.objectives.filter(done=False).exists()
 
-    def entries_today(self, reference_date=None):
+    def entries_today(self):
         """
         Compte le nombre d'entrées faites aujourd'hui.
         
-        Args:
-            reference_date (date, optional): Date de référence (aujourd'hui par défaut)
-            
         Returns:
             int: Nombre d'entrées d'aujourd'hui
         """
-        if reference_date is None:
-            reference_date = now().date()
-            
-        return self.entries.filter(created_at__date=reference_date).count()
+        return self.entries.filter(created_at__date=now().date()).count()
     
-    def entries_by_category(self, days=None):
+    def entries_by_category(self):
         """
         Calcule la distribution des entrées par catégorie.
         
-        Args:
-            days (int, optional): Limite aux N derniers jours si spécifié
-            
         Returns:
             dict: Dictionnaire avec catégories comme clés et nombre d'entrées comme valeurs
         """
-        entries = self.entries.all()
-        if days:
-            entries = entries.filter(created_at__gte=now() - timedelta(days=days))
-            
-        return dict(entries.values('category').annotate(count=Count('id')).values_list('category', 'count'))
+        stats = defaultdict(int)
+        for entry in self.entries.all():
+            stats[entry.category] += 1
+        return dict(stats)
 
     def entries_last_n_days(self, n=7):
         """
@@ -197,7 +159,7 @@ class User(AbstractUser):
             dict: Dictionnaire avec dates comme clés et nombre d'entrées comme valeurs
         """
         from django.db.models.functions import TruncDate
-        
+        from django.db.models import Count
         since = now() - timedelta(days=n)
         entries = self.entries.filter(created_at__gte=since)
         data = entries.annotate(day=TruncDate('created_at')).values('day').annotate(count=Count('id')).order_by('day')
@@ -215,7 +177,7 @@ class User(AbstractUser):
             dict: Dictionnaire avec dates comme clés et moyennes d'humeur comme valeurs
         """
         from django.db.models.functions import TruncDate
-        
+        from django.db.models import Avg
         since = now() - timedelta(days=n)
         entries = self.entries.filter(created_at__gte=since)
         data = entries.annotate(day=TruncDate('created_at')).values('day').annotate(moyenne=Avg('mood')).order_by('day')
@@ -241,7 +203,6 @@ class User(AbstractUser):
     def entries_per_category_last_n_days(self, n=7):
         """
         Calcule la distribution des entrées par catégorie pour les n derniers jours.
-        Optimisé avec agrégation Django.
         
         Args:
             n (int): Nombre de jours à considérer
@@ -250,12 +211,12 @@ class User(AbstractUser):
             dict: Dictionnaire avec catégories comme clés et nombre d'entrées comme valeurs
         """
         since = now() - timedelta(days=n)
-        return dict(
-            self.entries.filter(created_at__gte=since)
-            .values('category')
-            .annotate(count=Count('id'))
-            .values_list('category', 'count')
-        )
+        stats = defaultdict(int)
+        for entry in self.entries.filter(created_at__gte=since):
+            stats[entry.category] += 1
+        return dict(stats)
+    # Stocke la plus longue série de jours consécutifs avec des entrées
+    longest_streak = models.PositiveIntegerField(default=0, editable=False)
 
     def update_streaks(self):
         """
@@ -272,19 +233,7 @@ class User(AbstractUser):
         # Met à jour le record si la série actuelle est plus longue
         if current > self.longest_streak:
             self.longest_streak = current
-            self.save(update_fields=['longest_streak'])
-
-    def create_default_preferences(self):
-        """
-        Crée les préférences par défaut pour l'utilisateur s'il n'en a pas.
-        Cette méthode est utile pour s'assurer que tous les utilisateurs
-        ont des préférences définies.
-        
-        Returns:
-            UserPreference: L'objet de préférences (créé ou existant)
-        """
-        return UserPreference.objects.get_or_create(user=self)[0]
-
+            self.save()
 
 # 📓 Entrée de journal
 class JournalEntry(models.Model):
@@ -297,66 +246,27 @@ class JournalEntry(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="entries")  # Lien vers l'utilisateur
     content = models.TextField(verbose_name="Qu'avez-vous accompli aujourd'hui ?")  # Contenu de l'entrée
-    mood = models.IntegerField(
-        choices=MOOD_CHOICES, 
-        verbose_name="Note d'humeur",
-        validators=[MinValueValidator(1), MaxValueValidator(10)]
-    )  # Note d'humeur (1-10)
+    mood = models.IntegerField(choices=MOOD_CHOICES, verbose_name="Note d'humeur")  # Note d'humeur (1-10)
     category = models.CharField(max_length=100, verbose_name="Catégorie")  # Catégorie de l'entrée
     created_at = models.DateTimeField(auto_now_add=True)  # Date et heure de création
     updated_at = models.DateTimeField(auto_now=True)  # Date et heure de dernière modification
-
-    class Meta:
-        verbose_name = "Entrée de journal"
-        verbose_name_plural = "Entrées de journal"
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['user', 'created_at']),
-            models.Index(fields=['category']),
-        ]
 
     def __str__(self):
         """Représentation en chaîne de caractères de l'entrée"""
         return f"{self.user.username} - {self.created_at.date()}"
 
-    def clean(self):
-        """Validation personnalisée pour l'entrée"""
-        super().clean()
-        # Exemple de validation personnalisée
-        if self.content and len(self.content) < 5:
-            raise ValidationError({'content': 'Le contenu doit comporter au moins 5 caractères.'})
-
-    def save(self, *args, **kwargs):
-        """Surcharge de la méthode save pour effectuer des actions supplémentaires"""
-        is_new = self.pk is None
-        super().save(*args, **kwargs)
-        
-        if is_new:
-            # Après création d'une entrée, on actualise les statistiques journalières
-            DailyStat.generate_for_user(self.user, self.created_at.date())
-            # On vérifie si l'utilisateur a complété des défis
-            check_challenges(self.user)
-            # On met à jour les badges
-            self.user.update_badges()
-            # On met à jour les streaks
-            self.user.update_streaks()
-
     @staticmethod
-    def count_today(user, reference_date=None):
+    def count_today(user):
         """
         Méthode statique pour compter les entrées d'aujourd'hui pour un utilisateur.
         
         Args:
             user (User): L'utilisateur dont on veut compter les entrées
-            reference_date (date, optional): Date de référence (aujourd'hui par défaut)
             
         Returns:
             int: Nombre d'entrées faites aujourd'hui
         """
-        if reference_date is None:
-            reference_date = now().date()
-            
-        return user.entries.filter(created_at__date=reference_date).count()
+        return user.entries.filter(created_at__date=now().date()).count()
 
 
 # 🎯 Objectif utilisateur
@@ -371,12 +281,6 @@ class Objective(models.Model):
     done = models.BooleanField(default=False)  # État de complétion
     target_date = models.DateField()  # Date cible pour atteindre l'objectif
     target_value = models.PositiveIntegerField(default=1, verbose_name="Objectif à atteindre")  # Valeur à atteindre
-    created_at = models.DateTimeField(auto_now_add=True)  # Date de création
-
-    class Meta:
-        verbose_name = "Objectif"
-        verbose_name_plural = "Objectifs"
-        ordering = ['target_date', 'done']
 
     def __str__(self):
         """Représentation en chaîne de caractères de l'objectif avec indicateur d'achèvement"""
@@ -414,23 +318,6 @@ class Objective(models.Model):
             bool: True si l'objectif est atteint, False sinon
         """
         return self.done or self.progress() >= 100
-    
-    def save(self, *args, **kwargs):
-        """Surcharge pour mettre à jour l'état 'done' automatiquement si l'objectif est atteint"""
-        if not self.done and self.is_achieved():
-            self.done = True
-            
-            # Création d'une notification si l'objectif vient d'être atteint
-            create_notification = kwargs.pop('create_notification', True)
-            if create_notification:
-                from django.urls import reverse
-                Notification.objects.create(
-                    user=self.user,
-                    message=f"🎯 Objectif atteint : {self.title}",
-                    notif_type="objectif"
-                )
-                
-        super().save(*args, **kwargs)
 
 
 # 🏅 Badge obtenu
@@ -446,50 +333,18 @@ class Badge(models.Model):
     date_obtenue = models.DateField(auto_now_add=True)  # Date d'obtention
     level = models.PositiveIntegerField(null=True, blank=True)  # Niveau du badge (optionnel)
 
-    class Meta:
-        verbose_name = "Badge"
-        verbose_name_plural = "Badges"
-        ordering = ['-date_obtenue']
-        unique_together = ('name', 'user')  # Un utilisateur ne peut avoir qu'un badge avec le même nom
-
     def __str__(self):
         """Représentation en chaîne de caractères du badge"""
-        return f"{self.name} ({self.user.username})"
+        return self.name
 
-    def was_earned_today(self, reference_date=None):
+    def was_earned_today(self):
         """
         Vérifie si le badge a été obtenu aujourd'hui.
         
-        Args:
-            reference_date (date, optional): Date de référence (aujourd'hui par défaut)
-            
         Returns:
             bool: True si le badge a été obtenu aujourd'hui, False sinon
         """
-        if reference_date is None:
-            reference_date = now().date()
-            
-        return self.date_obtenue == reference_date
-        
-    def save(self, *args, **kwargs):
-        """Surcharge pour créer une notification lors de l'obtention d'un badge"""
-        is_new = self.pk is None
-        super().save(*args, **kwargs)
-        
-        if is_new:
-            # Création d'une notification pour informer l'utilisateur
-            Notification.objects.create(
-                user=self.user,
-                message=f"🏅 Nouveau badge débloqué : {self.name}",
-                notif_type="badge"
-            )
-            
-            # Enregistrement dans les logs d'événements
-            EventLog.objects.create(
-                user=self.user,
-                action="attribution_badge",
-                description=f"Badge '{self.name}' attribué à {self.user.username}"
-            )
+        return self.date_obtenue == now().date()
 
 
 # 🧩 BadgeTemplate : tous les badges définissables
@@ -503,10 +358,6 @@ class BadgeTemplate(models.Model):
     icon = models.CharField(max_length=100)  # Icône (chemin ou identifiant)
     condition = models.CharField(max_length=255)  # Description de la condition d'obtention
     level = models.PositiveIntegerField(null=True, blank=True)  # Niveau du badge (optionnel)
-
-    class Meta:
-        verbose_name = "Modèle de badge"
-        verbose_name_plural = "Modèles de badges"
 
     def __str__(self):
         """Représentation en chaîne de caractères du template de badge"""
@@ -553,12 +404,226 @@ class BadgeTemplate(models.Model):
                 thresholds = [1, 5, 10, 20, 35, 50, 75, 100, 150, 200]
                 if level_number <= len(thresholds):
                     return total >= thresholds[level_number - 1]
-            except (ValueError, IndexError):
+            except Exception:
                 return False
 
         # Par défaut, retourne False pour les badges non reconnus
         return False
 
+
+# 🔔 Notification utilisateur
+class Notification(models.Model):
+    """
+    Modèle représentant une notification pour un utilisateur.
+    Permet d'informer l'utilisateur d'événements importants dans l'application.
+    """
+    NOTIF_TYPES = [
+        ('badge', 'Badge débloqué'),
+        ('objectif', 'Objectif'),
+        ('statistique', 'Statistique'),
+        ('info', 'Information'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")  # Lien vers l'utilisateur
+    message = models.TextField()  # Contenu de la notification
+    notif_type = models.CharField(max_length=20, choices=NOTIF_TYPES, default='info')  # Type de notification
+    is_read = models.BooleanField(default=False)  # État de lecture
+    read_at = models.DateTimeField(null=True, blank=True)  # Date de lecture (null si non lue)
+    created_at = models.DateTimeField(auto_now_add=True)  # Date et heure de création
+    archived = models.BooleanField(default=False)  # champ pour archiver la notification
+    scheduled_at = models.DateTimeField(null=True, blank=True)  # Pour les notifications programmées
+    class Meta:
+        ordering = ['-created_at']  # Tri par défaut (récent en premier)
+
+    def __str__(self):
+        """Représentation en chaîne de caractères de la notification (tronquée à 50 caractères)"""
+        return f"{self.user.username} - {self.message[:50]}"
+    
+    def archive(self):
+        """
+        Archive la notification (sans suppression).
+        """
+        self.archived = True
+        self.save()
+
+    def mark_as_read(self):
+        """
+        Marque une seule notification comme lue si ce n’est pas déjà fait.
+        Enregistre également la date de lecture.
+        """
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = now()
+            self.save()
+
+    @classmethod
+    def mark_all_as_read(cls, user):
+        """
+        Marque toutes les notifications non lues d’un utilisateur comme lues.
+
+        Args:
+            user (User): L'utilisateur concerné.
+
+        Returns:
+            int: Nombre de notifications marquées comme lues.
+        """
+        unread = cls.objects.filter(user=user, is_read=False)
+        count = unread.update(is_read=True, read_at=now())
+        return count
+
+    @classmethod
+    def get_unread(cls, user):
+        """
+        Récupère toutes les notifications non lues et non archivées d'un utilisateur.
+        
+        Cette méthode de classe permet d'accéder rapidement aux notifications
+        qui nécessitent l'attention de l'utilisateur.
+        
+        Args:
+            user: L'utilisateur dont on veut récupérer les notifications
+            
+        Returns:
+            QuerySet: Ensemble des notifications non lues et non archivées
+        """
+        return cls.objects.filter(user=user, is_read=False, is_archived=False)
+
+    @classmethod
+    def get_inbox(cls, user):
+        """
+        Récupère toutes les notifications non archivées d'un utilisateur.
+        
+        Cette méthode correspond à la "boîte de réception" standard, contenant
+        à la fois les notifications lues et non lues, mais pas les notifications archivées.
+        
+        Args:
+            user: L'utilisateur dont on veut récupérer les notifications
+            
+        Returns:
+            QuerySet: Ensemble des notifications non archivées (lues et non lues)
+        """
+        return cls.objects.filter(user=user, is_archived=False)
+
+    @classmethod
+    def get_archived(cls, user):
+        """
+        Récupère toutes les notifications archivées d'un utilisateur.
+        
+        Cette méthode permet d'accéder aux anciennes notifications que l'utilisateur
+        a décidé de conserver mais de mettre de côté.
+        
+        Args:
+            user: L'utilisateur dont on veut récupérer les notifications archivées
+            
+        Returns:
+            QuerySet: Ensemble des notifications archivées
+        """
+        return cls.objects.filter(user=user, is_archived=True)    
+        
+
+
+class DailyStat(models.Model):
+    """
+    Modèle pour stocker les statistiques journalières d'un utilisateur.
+    Agrège les données d'entrées de journal pour une analyse et un affichage efficaces.
+    """
+    # Relation avec l'utilisateur (utilise le modèle défini dans settings)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="daily_stats")
+    date = models.DateField()  # 📅 Date de la stat (ex : 2025-04-18)
+    entries_count = models.PositiveIntegerField(default=0)  # 📝 Nombre d'entrées ce jour-là
+    mood_average = models.FloatField(null=True, blank=True)  # 😄 Moyenne d'humeur ce jour-là
+    categories = models.JSONField(default=dict, blank=True)  # 📊 Répartition par catégorie : {"Sport": 2, "Travail": 1}
+    
+    class Meta:
+        """
+        Métadonnées du modèle définissant les contraintes et les comportements.
+        """
+        unique_together = ('user', 'date')  # Garantit qu'il n'y a qu'une seule entrée par utilisateur et par jour
+        ordering = ['-date']  # Tri par date décroissante (plus récent en premier)
+        verbose_name = "Statistique journalière"  # Nom singulier dans l'admin
+        verbose_name_plural = "Statistiques journalières"  # Nom pluriel dans l'admin
+    
+    def __str__(self):
+        """
+        Représentation en chaîne de caractères de l'objet statistique journalier.
+        
+        Returns:
+            str: Nom d'utilisateur et date formatés (ex: "john_doe - 2025-04-18")
+        """
+        return f"{self.user.username} - {self.date}"
+    
+    @classmethod
+    def generate_for_user(cls, user, date=None):
+        """
+        🛠️ Méthode de classe pour générer ou mettre à jour les statistiques d'un utilisateur pour une date donnée.
+        
+        Cette méthode calcule le nombre d'entrées, la moyenne d'humeur et les statistiques par catégorie,
+        puis crée ou met à jour l'enregistrement correspondant dans la base de données.
+        
+        Args:
+            user: L'utilisateur pour lequel générer les statistiques
+            date: La date pour laquelle générer les statistiques (aujourd'hui par défaut)
+            
+        Returns:
+            DailyStat: L'objet de statistique créé ou mis à jour
+        """
+        if not date:
+            date = now().date()
+            
+        # Récupère toutes les entrées de l'utilisateur pour la date spécifiée
+        entries = user.entries.filter(created_at__date=date)
+        
+        # Calcule le nombre total d'entrées
+        entries_count = entries.count()
+        
+        # Calcule la moyenne d'humeur (arrondie à 1 décimale si elle existe)
+        mood_avg = entries.aggregate(avg=Avg("mood"))["avg"]
+        mood_avg = round(mood_avg, 1) if mood_avg else None
+        
+        # Calcule les statistiques par catégorie
+        cat_stats = {}
+        for cat in entries.values_list("category", flat=True):
+            cat_stats[cat] = cat_stats.get(cat, 0) + 1
+        
+        # Crée ou met à jour l'objet de statistique dans la base de données
+        obj, created = cls.objects.update_or_create(
+            user=user,
+            date=date,
+            defaults={
+                "entries_count": entries_count,
+                "mood_average": mood_avg,
+                "categories": cat_stats,
+            }
+        )
+        
+        return obj
+    
+class EventLog(models.Model):
+    """
+    Modèle pour enregistrer les événements et actions importantes dans l'application.
+    Permet de tracer l'activité des utilisateurs et les événements système pour l'audit,
+    le débogage et l'analyse des comportements utilisateurs.
+    """
+    # Lien vers l'utilisateur concerné (optionnel pour les événements système)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    
+    # Type d'action effectuée (ex: "connexion", "création_entrée", "attribution_badge")
+    action = models.CharField(max_length=255)
+    
+    # Détails supplémentaires sur l'événement
+    description = models.TextField(blank=True)
+    
+    # Horodatage automatique de l'événement
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        """
+        Représentation textuelle du log d'événement.
+        
+        Returns:
+            str: Chaîne formatée avec la date/heure et l'action effectuée
+        """
+        return f"{self.created_at} - {self.action}"
+    
 class Challenge(models.Model):
     """
     Modèle représentant un défi temporaire proposé aux utilisateurs.
@@ -810,225 +875,12 @@ def check_challenges(user):
                 notif_type="objectif"
             )
 
-# 🔔 Notification utilisateur
-class Notification(models.Model):
-    """
-    Modèle représentant une notification pour un utilisateur.
-    Permet d'informer l'utilisateur d'événements importants dans l'application.
-    """
-    NOTIF_TYPES = [
-        ('badge', 'Badge débloqué'),
-        ('objectif', 'Objectif'),
-        ('statistique', 'Statistique'),
-        ('info', 'Information'),
-    ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")  # Lien vers l'utilisateur
-    message = models.TextField()  # Contenu de la notification
-    notif_type = models.CharField(max_length=20, choices=NOTIF_TYPES, default='info')  # Type de notification
-    is_read = models.BooleanField(default=False)  # État de lecture
-    read_at = models.DateTimeField(null=True, blank=True)  # Date de lecture (null si non lue)
-    created_at = models.DateTimeField(auto_now_add=True)  # Date et heure de création
-    archived = models.BooleanField(default=False)  # champ pour archiver la notification
-    scheduled_at = models.DateTimeField(null=True, blank=True)  # Pour les notifications programmées
-    
-    class Meta:
-        ordering = ['-created_at']  # Tri par défaut (récent en premier)
-        indexes = [
-            models.Index(fields=['user', 'is_read', 'archived']),
-        ]
 
-    def __str__(self):
-        """Représentation en chaîne de caractères de la notification (tronquée à 50 caractères)"""
-        return f"{self.user.username} - {self.message[:50]}"
-    
-    def archive(self):
-        """
-        Archive la notification (sans suppression).
-        """
-        self.archived = True
-        self.save(update_fields=['archived'])
 
-    def mark_as_read(self):
-        """
-        Marque une seule notification comme lue si ce n'est pas déjà fait.
-        Enregistre également la date de lecture.
-        """
-        if not self.is_read:
-            self.is_read = True
-            self.read_at = now()
-            self.save(update_fields=['is_read', 'read_at'])
 
-    @classmethod
-    def mark_all_as_read(cls, user):
-        """
-        Marque toutes les notifications non lues d'un utilisateur comme lues.
+    
 
-        Args:
-            user (User): L'utilisateur concerné.
-
-        Returns:
-            int: Nombre de notifications marquées comme lues.
-        """
-        unread = cls.objects.filter(user=user, is_read=False)
-        count = unread.update(is_read=True, read_at=now())
-        return count
-
-    @classmethod
-    def get_unread(cls, user):
-        """
-        Récupère toutes les notifications non lues et non archivées d'un utilisateur.
-        
-        Cette méthode de classe permet d'accéder rapidement aux notifications
-        qui nécessitent l'attention de l'utilisateur.
-        
-        Args:
-            user: L'utilisateur dont on veut récupérer les notifications
-            
-        Returns:
-            QuerySet: Ensemble des notifications non lues et non archivées
-        """
-        return cls.objects.filter(user=user, is_read=False, archived=False)
-
-    @classmethod
-    def get_inbox(cls, user):
-        """
-        Récupère toutes les notifications non archivées d'un utilisateur.
-        
-        Cette méthode correspond à la "boîte de réception" standard, contenant
-        à la fois les notifications lues et non lues, mais pas les notifications archivées.
-        
-        Args:
-            user: L'utilisateur dont on veut récupérer les notifications
-            
-        Returns:
-            QuerySet: Ensemble des notifications non archivées (lues et non lues)
-        """
-        return cls.objects.filter(user=user, archived=False)
-
-    @classmethod
-    def get_archived(cls, user):
-        """
-        Récupère toutes les notifications archivées d'un utilisateur.
-        
-        Cette méthode permet d'accéder aux anciennes notifications que l'utilisateur
-        a décidé de conserver mais de mettre de côté.
-        
-        Args:
-            user: L'utilisateur dont on veut récupérer les notifications archivées
-            
-        Returns:
-            QuerySet: Ensemble des notifications archivées
-        """
-        return cls.objects.filter(user=user, archived=True)    
-        
-
-class DailyStat(models.Model):
-    """
-    Modèle pour stocker les statistiques journalières d'un utilisateur.
-    Agrège les données d'entrées de journal pour une analyse et un affichage efficaces.
-    """
-    # Relation avec l'utilisateur (utilise le modèle défini dans settings)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="daily_stats")
-    date = models.DateField()  # 📅 Date de la stat (ex : 2025-04-18)
-    entries_count = models.PositiveIntegerField(default=0)  # 📝 Nombre d'entrées ce jour-là
-    mood_average = models.FloatField(null=True, blank=True)  # 😄 Moyenne d'humeur ce jour-là
-    categories = models.JSONField(default=dict, blank=True)  # 📊 Répartition par catégorie : {"Sport": 2, "Travail": 1}
-    
-    class Meta:
-        """
-        Métadonnées du modèle définissant les contraintes et les comportements.
-        """
-        unique_together = ('user', 'date')  # Garantit qu'il n'y a qu'une seule entrée par utilisateur et par jour
-        ordering = ['-date']  # Tri par date décroissante (plus récent en premier)
-        verbose_name = "Statistique journalière"  # Nom singulier dans l'admin
-        verbose_name_plural = "Statistiques journalières"  # Nom pluriel dans l'admin
-        indexes = [
-            models.Index(fields=['user', 'date']),
-        ]
-    
-    def __str__(self):
-        """
-        Représentation en chaîne de caractères de l'objet statistique journalier.
-        
-        Returns:
-            str: Nom d'utilisateur et date formatés (ex: "john_doe - 2025-04-18")
-        """
-        return f"{self.user.username} - {self.date}"
-    
-    @classmethod
-    def generate_for_user(cls, user, date=None):
-        """
-        🛠️ Méthode de classe pour générer ou mettre à jour les statistiques d'un utilisateur pour une date donnée.
-        
-        Cette méthode calcule le nombre d'entrées, la moyenne d'humeur et les statistiques par catégorie,
-        puis crée ou met à jour l'enregistrement correspondant dans la base de données.
-        
-        Args:
-            user: L'utilisateur pour lequel générer les statistiques
-            date: La date pour laquelle générer les statistiques (aujourd'hui par défaut)
-            
-        Returns:
-            DailyStat: L'objet de statistique créé ou mis à jour
-        """
-        if not date:
-            date = now().date()
-            
-        # Récupère toutes les entrées de l'utilisateur pour la date spécifiée
-        entries = user.entries.filter(created_at__date=date)
-        
-        # Calcule le nombre total d'entrées
-        entries_count = entries.count()
-        
-        # Calcule la moyenne d'humeur (arrondie à 1 décimale si elle existe)
-        mood_avg = entries.aggregate(avg=Avg("mood"))["avg"]
-        mood_avg = round(mood_avg, 1) if mood_avg else None
-        
-        # Calcule les statistiques par catégorie
-        cat_stats = {}
-        for cat in entries.values_list("category", flat=True):
-            cat_stats[cat] = cat_stats.get(cat, 0) + 1
-        
-        # Crée ou met à jour l'objet de statistique dans la base de données
-        obj, created = cls.objects.update_or_create(
-            user=user,
-            date=date,
-            defaults={
-                "entries_count": entries_count,
-                "mood_average": mood_avg,
-                "categories": cat_stats,
-            }
-        )
-        
-        return obj
-    
-class EventLog(models.Model):
-    """
-    Modèle pour enregistrer les événements et actions importantes dans l'application.
-    Permet de tracer l'activité des utilisateurs et les événements système pour l'audit,
-    le débogage et l'analyse des comportements utilisateurs.
-    """
-    # Lien vers l'utilisateur concerné (optionnel pour les événements système)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    
-    # Type d'action effectuée (ex: "connexion", "création_entrée", "attribution_badge")
-    action = models.CharField(max_length=255)
-    
-    # Détails supplémentaires sur l'événement
-    description = models.TextField(blank=True)
-    
-    # Horodatage automatique de l'événement
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    def __str__(self):
-        """
-        Représentation textuelle du log d'événement.
-        
-        Returns:
-            str: Chaîne formatée avec la date/heure et l'action effectuée
-        """
-        return f"{self.created_at} - {self.action}"
-    
 class UserPreference(models.Model):
     """
     Modèle pour stocker les préférences personnalisées de chaque utilisateur.
@@ -1057,4 +909,4 @@ class UserPreference(models.Model):
         Returns:
             str: Chaîne indiquant à quel utilisateur appartiennent ces préférences
         """
-        return f"Préférences de {self.user.username}"    
+        return f"Préférences de {self.user.username}"
