@@ -123,25 +123,27 @@ class Notification(models.Model):
     @classmethod
     def mark_all_as_read(cls, user):
         """
-        Marque toutes les notifications non lues d'un utilisateur comme lues.
+        Marque toutes les notifications non lues **et non archivées** d'un utilisateur comme lues.
 
         Args:
             user (User): L'utilisateur concerné.
 
         Returns:
             int: Nombre de notifications marquées comme lues.
-            
+
         Utilisation dans l'API:
-            Parfait pour un endpoint qui permet de marquer toutes les notifications comme lues.
-            
+            Parfait pour un endpoint qui permet de marquer toutes les notifications comme lues,
+            à condition qu'elles ne soient pas archivées.
+
         Exemple dans une vue:
             @action(detail=False, methods=['post'])
             def mark_all_read(self, request):
                 count = Notification.mark_all_as_read(request.user)
                 return Response({'marked_read': count})
         """
-        unread = cls.objects.filter(user=user, is_read=False)
+        unread = cls.objects.filter(user=user, is_read=False, archived=False)
         return unread.update(is_read=True, read_at=now())
+
 
     @classmethod
     def get_unread(cls, user):
@@ -186,7 +188,7 @@ class Notification(models.Model):
             Cette méthode est idéale pour l'endpoint principal des notifications
             qui affiche la "boîte de réception" de l'utilisateur.
         """
-        return cls.objects.filter(user=user, archived=False)
+        return cls.objects.filter(user=user, is_read=False, archived=False)
 
     @classmethod
     def get_archived(cls, user):

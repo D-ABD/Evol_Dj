@@ -202,6 +202,13 @@ class ChallengeProgress(models.Model):
             Cette méthode peut servir à enrichir la sérialisation du modèle.
         """
         return self.challenge.get_progress(self.user)
+    
+    def save(self, *args, **kwargs):
+        if ChallengeProgress.objects.filter(user=self.user, challenge=self.challenge).exclude(pk=self.pk).exists():
+            from django.db import IntegrityError
+            raise IntegrityError("Progression déjà existante pour cet utilisateur et ce défi.")
+        super().save(*args, **kwargs)
+
 
 
 # 🔎 Vérification globale de tous les défis actifs pour un utilisateur

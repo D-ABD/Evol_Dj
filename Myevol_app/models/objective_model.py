@@ -68,6 +68,11 @@ class Objective(models.Model):
     def __str__(self):
         """Représentation en chaîne de caractères de l'objectif avec indicateur d'achèvement"""
         return f"{self.title} ({'✅' if self.done else '🕓'})"
+    
+    def clean(self):
+        if self.target_date < now().date():
+         raise ValidationError("La date cible ne peut pas être dans le passé.")
+
 
     def entries_done(self):
         """
@@ -148,27 +153,21 @@ class Objective(models.Model):
         """
         Surcharge pour mettre à jour l'état 'done' automatiquement si l'objectif est atteint.
         Une notification est créée uniquement si l'objectif vient d'être complété.
-        
-        Utilisation dans l'API:
-            La logique de notification est automatiquement gérée lors de la sauvegarde,
-            mais le paramètre create_notification peut être utilisé pour désactiver ce comportement.
-            
-        Exemple dans une vue API:
-            @action(detail=True, methods=['post'])
-            def complete(self, request, pk=None):
-                objective = self.get_object()
-                objective.done = True
-                objective.save()  # Notification créée automatiquement
-                return Response(self.get_serializer(objective).data)
+
+        Args:
+            create_notification (bool): Si False, ne crée pas de notification (utile pour certaines vues)
+
+        Returns:
+            None
         """
-        was_not_done = self.pk is not None and not self.done
-        is_achievement = not self.done and self.is_achieved()
-        
-        if is_achievement:
+        create_notification = kwargs.pop('create_notification', True)
+        self.full_clean()  # Appelle clean()
+
+
+        # Détection du changement d'état
+        if not self.done and self.progress() >= 100:
             self.done = True
 
-            # Crée une notification si ce n'est pas désactivé explicitement
-            create_notification = kwargs.pop('create_notification', True)
             if create_notification:
                 Notification.objects.create(
                     user=self.user,
@@ -177,7 +176,26 @@ class Objective(models.Model):
                 )
 
         super().save(*args, **kwargs)
-        
+
+    def is_due_today(self):
+        """
+        Vérifie si la date cible de l’objectif est aujourd’hui.
+
+        Returns:
+            bool: True si l’échéance est aujourd’hui
+        """
+        return self.target_date == now().date()
+
+    @property
+    def progress_percent(self):
+        """
+        Renvoie la progression de l’objectif en pourcentage (0 à 100).
+
+        Returns:
+            int: Pourcentage de progression
+        """
+        return self.progress()
+
     @classmethod
     def get_upcoming(cls, user, days=7):
         """

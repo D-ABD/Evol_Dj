@@ -1,3 +1,9 @@
+
+#: Liste des seuils fixes correspondant aux 5 premiers niveaux de l'utilisateur.
+#: Utilisée pour calculer la progression jusqu'au niveau 5.
+#: Au-delà, la progression se fait par palier de 15 entrées par niveau.
+LEVEL_THRESHOLDS = [1, 5, 10, 20, 35]
+
 def get_user_level(entry_count: int) -> int:
     """
     Calcule le niveau d’un utilisateur en fonction du nombre d’entrées.
@@ -16,6 +22,7 @@ def get_user_level(entry_count: int) -> int:
     else:
         # Progression régulière tous les 15 journaux après le niveau 4
         return 5 + ((entry_count - 35) // 15)
+LEVEL_THRESHOLDS = [1, 5, 10, 20, 35, 50, 75, 100, 150, 200]
 
 
 def get_user_progress(entry_count: int) -> dict:

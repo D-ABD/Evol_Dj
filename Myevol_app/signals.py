@@ -151,17 +151,7 @@ def update_stats_on_delete(sender, instance, **kwargs):
         # Journalise l'événement pour le suivi administratif
         logger.info(f"[STATS] Statistiques supprimées pour {user.username} - {date}")
 
-@receiver(post_save, sender=Notification)
-def mark_other_notifications_as_read(sender, instance, created, **kwargs):
-    """
-    Quand une notification est créée, marque les autres comme lues.
-    """
-    if created:
-        # Marquer toutes les autres notifications de l'utilisateur comme lues
-        Notification.objects.filter(
-            user=instance.user,
-            is_read=False
-        ).exclude(id=instance.id).update(is_read=True)
+
 
 @receiver(post_save, sender=Notification)
 def limit_notifications(sender, instance, **kwargs):

@@ -2,6 +2,246 @@ Directory structure:
 └── d-abd-evol_dj.git/
     ├── README.md
     ├── data_backup.json
+    ├── ingest.md
+    ├── manage.py
+    ├── projet.md
+    ├── requirements.txt
+    ├── config/
+    │   ├── __init__.py
+    │   ├── asgi.py
+    │   ├── celery.py
+    │   ├── settings.py
+    │   ├── urls.py
+    │   └── wsgi.py
+    └── Myevol_app/
+        ├── admin.py
+        ├── apps.py
+        ├── forms.py
+        ├── signals.py
+        ├── tasks.py
+        ├── tests.py
+        ├── urls.py
+        ├── views.py
+        ├── fixtures/
+        │   └── badge_templates.json
+        ├── migrations/
+        │   ├── 0001_initial.py
+        │   └── __init__.py
+        ├── models/
+        │   ├── __init__.py
+        │   ├── badge_model.py
+        │   ├── challenge_model.py
+        │   ├── event_log_model.py
+        │   ├── journal_model.py
+        │   ├── notification_model.py
+        │   ├── objective_model.py
+        │   ├── quote_model.py
+        │   ├── stats_model.py
+        │   ├── user_model.py
+        │   └── userPreference_model.py
+        ├── services/
+        │   ├── badge_service.py
+        │   ├── preferences_service.py
+        │   ├── streak_service.py
+        │   └── user_stats_service.py
+        ├── templates/
+        │   ├── base.html
+        │   └── myevol/
+        │       ├── add_entry.html
+        │       ├── add_objective.html
+        │       ├── badge_explore.html
+        │       ├── badge_list.html
+        │       ├── dashboard.html
+        │       ├── home.html
+        │       ├── notifications.html
+        │       ├── badges/
+        │       │   ├── badge_explore.html
+        │       │   └── badge_list.html
+        │       └── users/
+        │           ├── login.html
+        │           └── register.html
+        ├── templatetags/
+        │   ├── __init__.py
+        │   └── form_tags.py
+        └── utils/
+            ├── levels.py
+            └── stats.py
+
+
+Files Content:
+
+(Files content cropped to 300k characters, download full ingest to see more)
+================================================
+FILE: README.md
+================================================
+# Evol_Dj
+# 📘 MyEvol
+
+**MyEvol** est une application web Django de développement personnel. Elle permet de suivre son humeur au quotidien, définir des objectifs, débloquer des badges de progression et visualiser ses statistiques sous forme de graphiques.
+
+---
+
+## 🚀 Fonctionnalités principales
+
+- ✍️ Écriture d’entrées de **journal** avec humeur et catégorie
+- 🎯 Suivi des **objectifs personnels**
+- 📊 Visualisation de **statistiques** (humeur, objectifs, catégories)
+- 🏅 **Badges** de progression et niveaux à débloquer
+- 🔔 **Notifications** automatiques lors du déblocage d’un badge
+- 📈 Graphiques (Chart.js) intégrés au dashboard
+- 👤 Authentification utilisateur (inscription, connexion, déconnexion)
+
+---
+
+## 🛠️ Tech Stack
+
+- **Backend** : Django 4.2
+- **Base de données** : SQLite (ou PostgreSQL)
+- **Frontend** : HTML + Bootstrap 5 + Chart.js
+- **Auth** : Django User Model personnalisé
+
+---
+
+## 📸 Aperçus
+
+> _Exemples d’écrans à venir_  
+> Tu peux ajouter ici des screenshots de ton dashboard, journal, ou badges.
+
+---
+
+## 📂 Structure du projet
+
+Myevol_project/ ├── Myevol_app/ │ ├── models.py │ ├── views.py │ ├── forms.py │ ├── urls.py │ ├── templates/myevol/ │ ├── static/ │ └── utils/ ├── templates/base.html ├── manage.py └── requirements.txt
+
+
+---
+
+## ⚙️ Installation locale
+
+Cloner le projet :
+    git clone https://github.com/ton-user/my-evol.git
+    cd my-evol
+
+Activer environnement virtuel : 
+    python3 -m venv env
+    source env/bin/activate  # sous Linux/Mac
+    env\Scripts\activate     # sous Windows
+
+
+Installer les dépendances :
+    pip install -r requirements.txt
+
+Appliquer les migrations :
+    python3 manage.py makemigrations
+    python3 manage.py migrate
+
+Lancer le serveur :    
+    python3 manage.py runserver
+
+Créer un super utilisateur (admin) :
+    python3 manage.py createsuperuser
+
+✅ TODO (roadmap)
+    Journal quotidien
+    Objectifs personnels
+    Notifications et badges
+    Dashboard avec stats et graphiques
+    Export PDF / Excel
+    Version mobile
+    PWA ou version native via React Native 
+
+🧠 Développé avec ❤️ par @Adserv    
+# Evol_Dj
+
+
+
+Ajout de fonctionnalités:
+
+Export des données au format CSV/PDF
+Système de partage/compétition entre utilisateurs
+Intégration avec d'autres applications de santé/fitness
+AJout un tchat et un forum
+
+
+Ajoute une méthode __repr__ dans les modèles principaux (utile pour debug shell, admin ou tests).
+
+help_text dans les champs des modèles : pratique pour l’interface d’admin ou les formulaires auto-générés.
+
+Tests automatiques : si ce n’est pas encore fait, je peux t’aider à écrire des tests unitaires (TestCase) pour chaque modèle.
+
+Méthode get_absolute_url : utile si tu as des vues DetailView (ou dans l’admin, par exemple).
+
+Badge "7 jours d'activité"
+
+Ce badge est attribué ici mais n'est pas défini dans BadgeTemplate.check_unlock(). Tu peux :
+
+L’ajouter dans BadgeTemplate + dans la méthode check_unlock()
+
+Ou le garder ici comme badge "hors système", à toi de choisir
+
+Unicité des signaux :
+
+Tu as deux signaux @receiver(post_save, sender=Notification) ➜ tu pourrais les fusionner :
+award_badge() vs Badge.save()
+
+Tu as un léger chevauchement : award_badge() crée une notification, mais Badge.save() aussi ➜ tu pourrais soit :
+
+Supprimer la notification dans award_badge() (et laisser save() s’en charger)
+
+Ou désactiver la création auto dans save() si l’appel vient de award_badge()
+
+Ou ajouter un flag skip_notification=False dans Badge.save() si besoin
+
+Assure-toi que ces données sont bien importées dans la base via un loaddata, un script ou dans une tâche initial_setup avec BadgeTemplate.objects.get_or_create(...).
+
+Évite les doublons name dans cette liste, sinon Django lèvera une erreur d’unicité (ce qui n’est pas le cas ici).
+
+Pour que cela fonctionne avec Celery Beat
+Il te manque juste l’enregistrement de la tâche planifiée dans l’admin Django, ou via un script comme :
+
+Exemple avec django_celery_beat :
+bash
+Copier
+Modifier
+python manage.py shell
+python
+Copier
+Modifier
+from django_celery_beat.models import PeriodicTask, IntervalSchedule
+
+# Toutes les 10 minutes par exemple
+schedule, _ = IntervalSchedule.objects.get_or_create(every=10, period=IntervalSchedule.MINUTES)
+
+PeriodicTask.objects.get_or_create(
+    interval=schedule,
+    name='Envoyer les notifications programmées',
+    task='myevol_app.tasks.send_scheduled_notifications',
+)
+Remplace "myevol_app.tasks..." par le chemin exact vers ton fichier contenant la tâche.
+
+✅ Tu peux aller plus loin ensuite :
+Ajouter un envoi réel (mail, push, etc.)
+
+Filtrer par notif_type
+
+Logger plus finement les erreurs
+
+Ajouter les loggs aux models
+
+
+================================================
+FILE: data_backup.json
+================================================
+[{"model": "auth.permission", "pk": 1, "fields": {"name": "Can add log entry", "content_type": 1, "codename": "add_logentry"}}, {"model": "auth.permission", "pk": 2, "fields": {"name": "Can change log entry", "content_type": 1, "codename": "change_logentry"}}, {"model": "auth.permission", "pk": 3, "fields": {"name": "Can delete log entry", "content_type": 1, "codename": "delete_logentry"}}, {"model": "auth.permission", "pk": 4, "fields": {"name": "Can view log entry", "content_type": 1, "codename": "view_logentry"}}, {"model": "auth.permission", "pk": 5, "fields": {"name": "Can add permission", "content_type": 2, "codename": "add_permission"}}, {"model": "auth.permission", "pk": 6, "fields": {"name": "Can change permission", "content_type": 2, "codename": "change_permission"}}, {"model": "auth.permission", "pk": 7, "fields": {"name": "Can delete permission", "content_type": 2, "codename": "delete_permission"}}, {"model": "auth.permission", "pk": 8, "fields": {"name": "Can view permission", "content_type": 2, "codename": "view_permission"}}, {"model": "auth.permission", "pk": 9, "fields": {"name": "Can add group", "content_type": 3, "codename": "add_group"}}, {"model": "auth.permission", "pk": 10, "fields": {"name": "Can change group", "content_type": 3, "codename": "change_group"}}, {"model": "auth.permission", "pk": 11, "fields": {"name": "Can delete group", "content_type": 3, "codename": "delete_group"}}, {"model": "auth.permission", "pk": 12, "fields": {"name": "Can view group", "content_type": 3, "codename": "view_group"}}, {"model": "auth.permission", "pk": 13, "fields": {"name": "Can add content type", "content_type": 4, "codename": "add_contenttype"}}, {"model": "auth.permission", "pk": 14, "fields": {"name": "Can change content type", "content_type": 4, "codename": "change_contenttype"}}, {"model": "auth.permission", "pk": 15, "fields": {"name": "Can delete content type", "content_type": 4, "codename": "delete_contenttype"}}, {"model": "auth.permission", "pk": 16, "fields": {"name": "Can view content type", "content_type": 4, "codename": "view_contenttype"}}, {"model": "auth.permission", "pk": 17, "fields": {"name": "Can add session", "content_type": 5, "codename": "add_session"}}, {"model": "auth.permission", "pk": 18, "fields": {"name": "Can change session", "content_type": 5, "codename": "change_session"}}, {"model": "auth.permission", "pk": 19, "fields": {"name": "Can delete session", "content_type": 5, "codename": "delete_session"}}, {"model": "auth.permission", "pk": 20, "fields": {"name": "Can view session", "content_type": 5, "codename": "view_session"}}, {"model": "auth.permission", "pk": 21, "fields": {"name": "Can add user", "content_type": 6, "codename": "add_user"}}, {"model": "auth.permission", "pk": 22, "fields": {"name": "Can change user", "content_type": 6, "codename": "change_user"}}, {"model": "auth.permission", "pk": 23, "fields": {"name": "Can delete user", "content_type": 6, "codename": "delete_user"}}, {"model": "auth.permission", "pk": 24, "fields": {"name": "Can view user", "content_type": 6, "codename": "view_user"}}, {"model": "auth.permission", "pk": 25, "fields": {"name": "Can add objective", "content_type": 7, "codename": "add_objective"}}, {"model": "auth.permission", "pk": 26, "fields": {"name": "Can change objective", "content_type": 7, "codename": "change_objective"}}, {"model": "auth.permission", "pk": 27, "fields": {"name": "Can delete objective", "content_type": 7, "codename": "delete_objective"}}, {"model": "auth.permission", "pk": 28, "fields": {"name": "Can view objective", "content_type": 7, "codename": "view_objective"}}, {"model": "auth.permission", "pk": 29, "fields": {"name": "Can add journal entry", "content_type": 8, "codename": "add_journalentry"}}, {"model": "auth.permission", "pk": 30, "fields": {"name": "Can change journal entry", "content_type": 8, "codename": "change_journalentry"}}, {"model": "auth.permission", "pk": 31, "fields": {"name": "Can delete journal entry", "content_type": 8, "codename": "delete_journalentry"}}, {"model": "auth.permission", "pk": 32, "fields": {"name": "Can view journal entry", "content_type": 8, "codename": "view_journalentry"}}, {"model": "auth.permission", "pk": 33, "fields": {"name": "Can add badge template", "content_type": 9, "codename": "add_badgetemplate"}}, {"model": "auth.permission", "pk": 34, "fields": {"name": "Can change badge template", "content_type": 9, "codename": "change_badgetemplate"}}, {"model": "auth.permission", "pk": 35, "fields": {"name": "Can delete badge template", "content_type": 9, "codename": "delete_badgetemplate"}}, {"model": "auth.permission", "pk": 36, "fields": {"name": "Can view badge template", "content_type": 9, "codename": "view_badgetemplate"}}, {"model": "auth.permission", "pk": 37, "fields": {"name": "Can add badge", "content_type": 10, "codename": "add_badge"}}, {"model": "auth.permission", "pk": 38, "fields": {"name": "Can change badge", "content_type": 10, "codename": "change_badge"}}, {"model": "auth.permission", "pk": 39, "fields": {"name": "Can delete badge", "content_type": 10, "codename": "delete_badge"}}, {"model": "auth.permission", "pk": 40, "fields": {"name": "Can view badge", "content_type": 10, "codename": "view_badge"}}, {"model": "auth.permission", "pk": 41, "fields": {"name": "Can add notification", "content_type": 11, "codename": "add_notification"}}, {"model": "auth.permission", "pk": 42, "fields": {"name": "Can change notification", "content_type": 11, "codename": "change_notification"}}, {"model": "auth.permission", "pk": 43, "fields": {"name": "Can delete notification", "content_type": 11, "codename": "delete_notification"}}, {"model": "auth.permission", "pk": 44, "fields": {"name": "Can view notification", "content_type": 11, "codename": "view_notification"}}, {"model": "contenttypes.contenttype", "pk": 1, "fields": {"app_label": "admin", "model": "logentry"}}, {"model": "contenttypes.contenttype", "pk": 2, "fields": {"app_label": "auth", "model": "permission"}}, {"model": "contenttypes.contenttype", "pk": 3, "fields": {"app_label": "auth", "model": "group"}}, {"model": "contenttypes.contenttype", "pk": 4, "fields": {"app_label": "contenttypes", "model": "contenttype"}}, {"model": "contenttypes.contenttype", "pk": 5, "fields": {"app_label": "sessions", "model": "session"}}, {"model": "contenttypes.contenttype", "pk": 6, "fields": {"app_label": "Myevol_app", "model": "user"}}, {"model": "contenttypes.contenttype", "pk": 7, "fields": {"app_label": "Myevol_app", "model": "objective"}}, {"model": "contenttypes.contenttype", "pk": 8, "fields": {"app_label": "Myevol_app", "model": "journalentry"}}, {"model": "contenttypes.contenttype", "pk": 9, "fields": {"app_label": "Myevol_app", "model": "badgetemplate"}}, {"model": "contenttypes.contenttype", "pk": 10, "fields": {"app_label": "Myevol_app", "model": "badge"}}, {"model": "contenttypes.contenttype", "pk": 11, "fields": {"app_label": "Myevol_app", "model": "notification"}}, {"model": "sessions.session", "pk": "7go2ji89957ey1wg8qa9obnaqzuf8sd9", "fields": {"session_data": ".eJxVjEEOwiAQRe_C2pAMDIW6dO8ZyDADUjU0Ke3KeHdt0oVu_3vvv1Skba1x63mJk6izAnX63RLxI7cdyJ3abdY8t3WZkt4VfdCur7Pk5-Vw_w4q9fqtLSRmg4mSBPQDgAuOHAUPZMV5YvAEJRkraPLIWEK2kv0wWiRbENX7A-gqN_g:1u2yQh:wJxroG6fi3TKHbWu0w3xGHeUXg9ZbAq4k47ql3HnpNg", "expire_date": "2025-04-24T20:23:19.742Z"}}, {"model": "Myevol_app.user", "pk": 1, "fields": {"password": "pbkdf2_sha256$600000$bdbVEKYnxOKDGQb9Syt10a$xi4fAp1H1ePVTJSzMcnOUP3GA71vMMRe7ADGkFHWZnM=", "last_login": "2025-04-10T20:23:19.739Z", "is_superuser": true, "username": "ABD", "first_name": "", "last_name": "", "is_staff": true, "is_active": true, "date_joined": "2025-04-10T19:19:21.971Z", "email": "abdouldiatta@gmail.com", "groups": [], "user_permissions": []}}, {"model": "Myevol_app.journalentry", "pk": 1, "fields": {"user": 1, "content": "azerty", "mood": 6, "category": "rest", "created_at": "2025-04-11T21:03:08.679Z"}}, {"model": "Myevol_app.badge", "pk": 1, "fields": {"name": "Première entrée", "description": "Bravo pour ta première entrée 🎉", "icon": "🌱", "user": 1, "date_obtenue": "2025-04-11"}}, {"model": "Myevol_app.badge", "pk": 2, "fields": {"name": "Niveau 1", "description": "Tu as atteint le niveau 1 💪", "icon": "🏆", "user": 1, "date_obtenue": "2025-04-11"}}, {"model": "Myevol_app.badgetemplate", "pk": 1, "fields": {"name": "Première entrée", "description": "Bravo pour ta première entrée 🎉", "icon": "🌱", "condition": "Créer une première entrée de journal"}}, {"model": "Myevol_app.badgetemplate", "pk": 2, "fields": {"name": "7 jours d'activité", "description": "1 semaine d'activité, continue comme ça 🚀", "icon": "🔥", "condition": "Ajouter au moins 1 entrée par jour pendant 7 jours"}}, {"model": "Myevol_app.badgetemplate", "pk": 3, "fields": {"name": "Niveau 1", "description": "Tu as atteint le niveau 1 💪", "icon": "🏆", "condition": "Atteindre le niveau 1 (1 entrée)"}}, {"model": "Myevol_app.badgetemplate", "pk": 4, "fields": {"name": "Niveau 2", "description": "Tu as atteint le niveau 2 💪", "icon": "🏆", "condition": "Atteindre le niveau 2 (5 entrées)"}}, {"model": "Myevol_app.badgetemplate", "pk": 5, "fields": {"name": "Niveau 3", "description": "Tu as atteint le niveau 3 💪", "icon": "🏆", "condition": "Atteindre le niveau 3 (10 entrées)"}}, {"model": "Myevol_app.notification", "pk": 1, "fields": {"user": 1, "message": "🎉 Nouveau badge : Première entrée !", "is_read": true, "created_at": "2025-04-11T21:03:08.739Z"}}, {"model": "Myevol_app.notification", "pk": 2, "fields": {"user": 1, "message": "🏆 Félicitations, tu as atteint le Niveau 1 !", "is_read": true, "created_at": "2025-04-11T21:03:08.767Z"}}]
+
+
+================================================
+FILE: ingest.md
+================================================
+Directory structure:
+└── d-abd-evol_dj.git/
+    ├── README.md
+    ├── data_backup.json
     ├── manage.py
     ├── models_old.md
     ├── projet.md
@@ -7594,477 +7834,4 @@ class Objective(models.Model):
             def upcoming(self, request):
                 days = int(request.query_params.get('days', 7))
                 objectives = Objective.get_upcoming(request.user, days)
-                return Response(self.get_serializer(objectives, many=True).data)
-        """
-        today = now().date()
-        deadline = today + timedelta(days=days)
-        
-        return cls.objects.filter(
-            user=user,
-            done=False,
-            target_date__gte=today,
-            target_date__lte=deadline
-        ).order_by('target_date')
-        
-    @classmethod
-    def get_statistics(cls, user):
-        """
-        Calcule des statistiques sur les objectifs de l'utilisateur.
-        
-        Args:
-            user (User): L'utilisateur concerné
             
-        Returns:
-            dict: Statistiques calculées sur les objectifs
-                {
-                    'total': 42,
-                    'completed': 28,
-                    'completion_rate': 66.7,
-                    'overdue': 5,
-                    'by_category': {
-                        'Santé': {'total': 15, 'completed': 10},
-                        'Travail': {'total': 12, 'completed': 8},
-                        ...
-                    }
-                }
-                
-        Utilisation dans l'API:
-            Idéal pour un dashboard ou un endpoint de statistiques.
-            
-        Exemple dans une vue:
-            @action(detail=False, methods=['get'])
-            def statistics(self, request):
-                return Response(Objective.get_statistics(request.user))
-        """
-        from django.db.models import Count, Case, When, IntegerField
-        
-        # Statistiques globales
-        objectives = cls.objects.filter(user=user)
-        total = objectives.count()
-        completed = objectives.filter(done=True).count()
-        
-        # Statistiques par catégorie
-        by_category = objectives.values('category').annotate(
-            total=Count('id'),
-            completed=Count(Case(When(done=True, then=1), output_field=IntegerField()))
-        ).order_by('-total')
-        
-        # Objectifs en retard
-        overdue = objectives.filter(
-            done=False,
-            target_date__lt=now().date()
-        ).count()
-        
-        # Calcul du taux de complétion
-        completion_rate = (completed / total * 100) if total > 0 else 0
-        
-        return {
-            'total': total,
-            'completed': completed,
-            'completion_rate': round(completion_rate, 1),
-            'overdue': overdue,
-            'by_category': {
-                item['category']: {'total': item['total'], 'completed': item['completed']} 
-                for item in by_category
-            }
-        }
-
-
-================================================
-FILE: Myevol_app/models/quote_model.py
-================================================
-from django.db import models
-
-
-class Quote(models.Model):
-    """
-    Modèle pour stocker des citations inspirantes ou motivantes.
-    Ces citations peuvent être affichées aux utilisateurs en fonction de leur humeur
-    ou à des moments stratégiques dans l'application.
-    
-    API Endpoints suggérés:
-    - GET /api/quotes/ - Liste de toutes les citations
-    - GET /api/quotes/random/ - Retourne une citation aléatoire
-    - GET /api/quotes/random/?mood_tag=positive - Citation aléatoire filtrée par étiquette
-    - GET /api/quotes/daily/ - Citation du jour
-    - GET /api/quotes/authors/ - Liste des auteurs disponibles
-    
-    Exemple de sérialisation JSON:
-    {
-        "id": 42,
-        "text": "La vie est comme une bicyclette, il faut avancer pour ne pas perdre l'équilibre.",
-        "author": "Albert Einstein",
-        "mood_tag": "positive",
-        "length": 75  // Champ calculé optionnel
-    }
-    """
-
-    # Le texte de la citation
-    text = models.TextField()
-
-    # L'auteur de la citation (optionnel)
-    author = models.CharField(max_length=255, blank=True)
-
-    # Étiquette d'humeur associée pour le ciblage contextuel
-    mood_tag = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="Étiquette d'humeur associée (ex: 'positive', 'low', 'neutral')"
-    )
-
-    class Meta:
-        verbose_name = "Citation"
-        verbose_name_plural = "Citations"
-        ordering = ['author']
-        
-        """
-        Filtres API recommandés:
-        - author (exact, contains)
-        - mood_tag (exact, in)
-        - text (contains)
-        - length (calculé, pour filtrer par taille)
-        """
-        
-        indexes = [
-            models.Index(fields=['mood_tag']),
-            models.Index(fields=['author']),
-        ]
-
-    def __str__(self):
-        """
-        Représentation textuelle de la citation.
-        
-        Returns:
-            str: Citation avec son auteur si disponible
-        """
-        if self.author:
-            return f'"{self.text}" — {self.author}'
-        return f'"{self.text}"'
-    
-    def length(self):
-        """
-        Retourne la longueur du texte de la citation.
-        
-        Returns:
-            int: Nombre de caractères dans la citation
-            
-        Utilisation dans l'API:
-            Peut être utilisé comme champ calculé pour filtrer les citations
-            par longueur (courtes pour notifications, longues pour affichage principal).
-        """
-        return len(self.text)
-    
-    @classmethod
-    def get_random(cls, mood_tag=None):
-        """
-        Retourne une citation aléatoire, optionnellement filtrée par mood_tag.
-        
-        Args:
-            mood_tag (str, optional): Étiquette d'humeur pour filtrer les citations
-            
-        Returns:
-            Quote: Une citation aléatoire ou None si aucune ne correspond
-            
-        Utilisation dans l'API:
-            Parfait pour un endpoint qui affiche une citation aléatoire
-            dans le dashboard ou les notifications.
-            
-        Exemple dans une vue:
-            @action(detail=False, methods=['get'])
-            def random(self, request):
-                mood_tag = request.query_params.get('mood_tag')
-                quote = Quote.get_random(mood_tag)
-                if not quote:
-                    return Response(
-                        {"detail": "Aucune citation trouvée."},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
-                return Response(self.get_serializer(quote).data)
-        """
-        import random
-        
-        queryset = cls.objects.all()
-        if mood_tag:
-            queryset = queryset.filter(mood_tag=mood_tag)
-            
-        count = queryset.count()
-        if count == 0:
-            return None
-            
-        random_index = random.randint(0, count - 1)
-        return queryset[random_index]
-    
-    @classmethod
-    def get_daily_quote(cls, user=None):
-        """
-        Retourne la citation du jour, potentiellement personnalisée selon l'utilisateur.
-        
-        Args:
-            user (User, optional): Utilisateur pour personnalisation basée sur son humeur
-            
-        Returns:
-            Quote: Citation du jour
-            
-        Utilisation dans l'API:
-            Idéal pour un widget de citation du jour sur le dashboard.
-            
-        Note technique:
-            Cette méthode assure que tous les utilisateurs voient la même citation le même jour,
-            à moins qu'un filtre d'humeur spécifique ne soit appliqué selon leur profil.
-        """
-        import datetime
-        import hashlib
-        
-        # Date du jour comme seed pour la sélection
-        today = datetime.date.today().strftime("%Y%m%d")
-        
-        # Si un utilisateur est fourni, on peut personnaliser selon son humeur récente
-        mood_filter = None
-        if user:
-            from django.db.models import Avg
-            # Calcul de l'humeur moyenne sur les 3 derniers jours
-            recent_entries = user.entries.filter(
-                created_at__gte=datetime.datetime.now() - datetime.timedelta(days=3)
-            )
-            if recent_entries.exists():
-                avg_mood = recent_entries.aggregate(avg=Avg('mood'))['avg']
-                # Définition du filtre selon l'humeur
-                if avg_mood is not None:
-                    if avg_mood < 4:
-                        mood_filter = 'low'
-                    elif avg_mood > 7:
-                        mood_filter = 'positive'
-                    else:
-                        mood_filter = 'neutral'
-        
-        # Récupération des citations correspondant au filtre d'humeur
-        quotes = cls.objects.all()
-        if mood_filter:
-            filtered_quotes = quotes.filter(mood_tag=mood_filter)
-            # Si aucune citation ne correspond, on revient à toutes les citations
-            if filtered_quotes.exists():
-                quotes = filtered_quotes
-                
-        count = quotes.count()
-        if count == 0:
-            return None
-            
-        # Utiliser le hashage pour assurer la même sélection pour tous les utilisateurs le même jour
-        hash_obj = hashlib.md5(today.encode())
-        hash_int = int(hash_obj.hexdigest(), 16)
-        
-        # Sélection déterministe basée sur la date
-        index = hash_int % count
-        return quotes[index]
-    
-    @classmethod
-    def get_authors_list(cls):
-        """
-        Retourne la liste des auteurs disponibles avec leur nombre de citations.
-        
-        Returns:
-            list: Liste de dictionnaires {author, count}
-            
-        Utilisation dans l'API:
-            Utile pour construire un filtre ou un menu déroulant des auteurs.
-            
-        Exemple dans une vue:
-            @action(detail=False, methods=['get'])
-            def authors(self, request):
-                return Response(Quote.get_authors_list())
-        """
-        from django.db.models import Count
-        
-        authors = cls.objects.exclude(author='').values('author').annotate(
-            count=Count('id')
-        ).order_by('author')
-        
-        return list(authors)
-
-
-================================================
-FILE: Myevol_app/models/stats_model.py
-================================================
-from datetime import timedelta
-from django.db import models
-from django.utils.timezone import now
-from collections import defaultdict
-from django.db.models import Avg
-
-from django.conf import settings
-User = settings.AUTH_USER_MODEL
-
-
-class WeeklyStat(models.Model):
-    """
-    Modèle pour stocker les statistiques hebdomadaires d'un utilisateur.
-    Agrège les données d'entrées pour fournir des insights sur une période d'une semaine.
-    Permet de suivre les tendances et l'évolution sur une échelle de temps plus large que les stats quotidiennes.
-    
-    API Endpoints suggérés:
-    - GET /api/stats/weekly/ - Liste des statistiques hebdomadaires de l'utilisateur
-    - GET /api/stats/weekly/current/ - Statistiques de la semaine en cours
-    - GET /api/stats/weekly/{date}/ - Statistiques de la semaine contenant la date spécifiée
-    - GET /api/stats/weekly/trends/ - Évolution des statistiques sur plusieurs semaines
-    
-    Exemple de sérialisation JSON:
-    {
-        "id": 42,
-        "week_start": "2025-04-14",
-        "week_end": "2025-04-20",  // Champ calculé
-        "entries_count": 12,
-        "mood_average": 7.5,
-        "categories": {
-            "Travail": 5,
-            "Sport": 3,
-            "Famille": 4
-        },
-        "top_category": "Travail",  // Champ calculé
-        "week_number": 16           // Champ calculé
-    }
-    """
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="weekly_stats")
-    week_start = models.DateField()  # Premier jour de la semaine (lundi)
-    entries_count = models.PositiveIntegerField()  # Nombre total d'entrées
-    mood_average = models.FloatField(null=True, blank=True)  # Moyenne d'humeur
-    categories = models.JSONField(default=dict, blank=True)  # Répartition par catégorie
-
-    class Meta:
-        unique_together = ('user', 'week_start')
-        ordering = ['-week_start']
-        verbose_name = "Statistique hebdomadaire"
-        verbose_name_plural = "Statistiques hebdomadaires"
-        
-        """
-        Filtres API recommandés:
-        - week_start (date, gte, lte)
-        - entries_count (gte, lte)
-        - mood_average (gte, lte)
-        """
-
-    def __str__(self):
-        return f"{self.user.username} - semaine du {self.week_start}"
-        
-    def week_end(self):
-        """
-        Calcule le dernier jour de la semaine.
-        
-        Returns:
-            date: Date du dimanche de cette semaine
-            
-        Utilisation dans l'API:
-            Utile comme champ calculé pour l'affichage de la période complète.
-        """
-        return self.week_start + timedelta(days=6)
-        
-    def week_number(self):
-        """
-        Retourne le numéro de semaine dans l'année.
-        
-        Returns:
-            int: Numéro de la semaine (1-53)
-            
-        Utilisation dans l'API:
-            Pratique pour l'affichage et le regroupement des données par semaine.
-        """
-        return self.week_start.isocalendar()[1]
-        
-    def top_category(self):
-        """
-        Détermine la catégorie la plus fréquente de la semaine.
-        
-        Returns:
-            str: Nom de la catégorie la plus fréquente, ou None si aucune entrée
-            
-        Utilisation dans l'API:
-            Utile pour l'affichage de résumés ou de badges dans l'interface.
-        """
-        if not self.categories:
-            return None
-            
-        return max(self.categories.items(), key=lambda x: x[1])[0]
-
-    @classmethod
-    def generate_for_user(cls, user, reference_date=None):
-        """
-        Génère ou met à jour les statistiques hebdomadaires pour un utilisateur.
-
-        Args:
-            user: L'utilisateur concerné
-            reference_date: Date de référence (par défaut aujourd'hui)
-
-        Returns:
-            (obj, created): Statistique mise à jour ou créée
-            
-        Utilisation dans l'API:
-            Cette méthode devrait être appelée en arrière-plan après chaque
-            ajout/modification/suppression d'entrée, ou via une tâche périodique.
-            
-        Exemple d'utilisation dans une vue:
-            @action(detail=False, methods=['post'])
-            def refresh(self, request):
-                date_param = request.data.get('date')
-                date = parse_date(date_param) if date_param else None
-                stat, created = WeeklyStat.generate_for_user(request.user, date)
-                return Response(self.get_serializer(stat).data)
-        """
-        if not reference_date:
-            reference_date = now().date()
-
-        week_start = reference_date - timedelta(days=reference_date.weekday())
-        week_end = week_start + timedelta(days=6)
-
-        entries = user.entries.filter(created_at__date__range=(week_start, week_end))
-        entries_count = entries.count()
-
-        mood_avg = entries.aggregate(avg=Avg("mood"))["avg"]
-        mood_avg = round(mood_avg, 1) if mood_avg is not None else None
-
-        categories = defaultdict(int)
-        for entry in entries:
-            categories[entry.category] += 1
-
-        return cls.objects.update_or_create(
-            user=user,
-            week_start=week_start,
-            defaults={
-                "entries_count": entries_count,
-                "mood_average": mood_avg,
-                "categories": dict(categories),
-            }
-        )
-        
-    @classmethod
-    def get_trends(cls, user, weeks=10):
-        """
-        Récupère l'évolution des statistiques sur plusieurs semaines.
-        
-        Args:
-            user: L'utilisateur concerné
-            weeks: Nombre de semaines à inclure
-            
-        Returns:
-            dict: Données de tendances structurées pour visualisation
-                {
-                    'weeks': ['2025-W15', '2025-W16', ...],
-                    'entries': [8, 12, ...],
-                    'mood': [6.5, 7.2, ...]
-                }
-                
-        Utilisation dans l'API:
-            Parfait pour générer des graphiques d'évolution.
-            
-        Exemple dans une vue:
-            @action(detail=False, methods=['get'])
-            def trends(self, request):
-                weeks = int(request.query_params.get('weeks', 10))
-                return Response(WeeklyStat.get_trends(request.user, weeks))
-        """
-        # Calculer le début de la période
-        current_week_start = now().date() - timedelta(days=now().date().weekday())
-        start_date = current_week_start - timedelta(weeks=weeks)
-        
-        # Récupérer les statistiques hebdomadaires existantes
-        stats = cls.objects.filter(
-            user=user,
- 

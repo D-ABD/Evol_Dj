@@ -1,3 +1,5 @@
+from ..utils.levels import get_user_level, LEVEL_THRESHOLDS, get_user_progress
+
 from datetime import timedelta
 from collections import defaultdict
 
@@ -226,8 +228,7 @@ class BadgeTemplate(models.Model):
         if self.name.startswith("Niveau"):
             try:
                 level_number = int(self.name.split(" ")[1])
-                thresholds = [1, 5, 10, 20, 35, 50, 75, 100, 150, 200]
-                return total >= thresholds[level_number - 1]
+                return get_user_level(total) >= level_number
             except (ValueError, IndexError):
                 return False
 
@@ -235,31 +236,47 @@ class BadgeTemplate(models.Model):
     
     def get_progress(self, user):
         """
-        Calcule le pourcentage de progression d'un utilisateur vers l'obtention de ce badge.
-        
+        Calcule la progression d'un utilisateur vers l'obtention de ce badge.
+
         Args:
-            user (User): L'utilisateur dont on veut calculer la progression
-            
+            user (User): L'utilisateur concerné
+
         Returns:
-            dict: Dictionnaire contenant le pourcentage et des informations sur la progression
+            dict: Contient les informations de progression vers le badge :
                 {
-                    'percent': 70,  # Pourcentage de progression (0-100)
-                    'current': 7,   # Valeur actuelle (ex: nombre d'entrées)
-                    'target': 10,   # Valeur cible
-                    'unlocked': False  # Si le badge est déverrouillé
+                    'percent': Pourcentage de progression (int),
+                    'current': Valeur actuelle (ex. nombre d'entrées),
+                    'target': Seuil à atteindre pour débloquer le badge,
+                    'unlocked': Booléen indiquant si le badge est déjà débloqué
                 }
-        
-        Utilisation dans l'API:
-            Idéal pour un endpoint /api/badges/templates/{id}/progress/
-            ou comme champ calculé dans la sérialisation des templates de badge.
+
+        Utilisé dans l'API pour visualiser les barres de progression.
         """
-        # Si le badge est déjà débloqué, retourner 100%
+        total = user.total_entries()  # Entrées du journal
+
+        # ✅ Cas 1 : Badge déjà débloqué → progression complète, mais on garde target cohérent
         if user.badges.filter(name=self.name).exists():
-            return {'percent': 100, 'unlocked': True}
-            
-        total = user.total_entries()
-        
-        # Logique spécifique par type de badge
+            try:
+                if self.name.startswith("Niveau"):
+                    level_number = int(self.name.split(" ")[1])
+                    progress_data = get_user_progress(total)
+                    return {
+                        'percent': 100,
+                        'unlocked': True,
+                        'current': total,
+                        'target': progress_data["next_threshold"]
+                    }
+            except Exception:
+                pass  # Si problème dans la logique, on retombe sur le fallback plus bas
+
+            return {
+                'percent': 100,
+                'unlocked': True,
+                'current': total,
+                'target': total
+            }
+
+        # ✅ Cas 2 : Badge "Première entrée"
         if self.name == "Première entrée":
             return {
                 'percent': 100 if total >= 1 else 0,
@@ -267,32 +284,30 @@ class BadgeTemplate(models.Model):
                 'target': 1,
                 'unlocked': total >= 1
             }
-            
+
+        # ✅ Cas 3 : Badge de type "Niveau X"
         elif self.name.startswith("Niveau"):
             try:
                 level_number = int(self.name.split(" ")[1])
-                thresholds = [1, 5, 10, 20, 35, 50, 75, 100, 150, 200]
-                target = thresholds[level_number - 1]
-                previous = thresholds[level_number - 2] if level_number > 1 else 0
-                
-                # Calcul du pourcentage entre le seuil précédent et le seuil actuel
-                if total >= target:
-                    percent = 100
-                else:
-                    percent = ((total - previous) / (target - previous)) * 100
-                    percent = max(0, min(99, percent))  # Limite entre 0 et 99%
-                
+                progress_data = get_user_progress(total)
                 return {
-                    'percent': int(percent),
+                    'percent': 100 if progress_data["level"] >= level_number else progress_data["progress"],
                     'current': total,
-                    'target': target,
-                    'unlocked': total >= target
+                    'target': progress_data["next_threshold"],
+                    'unlocked': progress_data["level"] >= level_number
                 }
-            except (ValueError, IndexError):
-                return {'percent': 0, 'unlocked': False}
-                
-        # Cas par défaut: soit 0% soit 100%
+            except (ValueError, IndexError, KeyError):
+                return {
+                    'percent': 0,
+                    'unlocked': False,
+                    'current': total,
+                    'target': 0
+                }
+
+        # ✅ Cas 4 : Tous les autres badges personnalisés
         return {
             'percent': 100 if self.check_unlock(user) else 0,
-            'unlocked': self.check_unlock(user)
+            'unlocked': self.check_unlock(user),
+            'current': total,
+            'target': 1
         }
