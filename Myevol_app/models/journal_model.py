@@ -1,14 +1,19 @@
+# MyEvol_app/models/journal_model.py
+
+import logging
 from datetime import timedelta
 from django.db import models
+from django.urls import reverse
 from django.utils.timezone import now
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
-from django.contrib.auth import get_user_model
-
 from django.conf import settings
+
+# Logger importé pour la journalisation
+logger = logging.getLogger(__name__)
+
 User = settings.AUTH_USER_MODEL
 
-# 📓 Entrée de journal
 class JournalEntry(models.Model):
     """
     Modèle représentant une entrée de journal.
@@ -22,26 +27,8 @@ class JournalEntry(models.Model):
     - DELETE /api/journal-entries/{id}/ - Supprimer une entrée
     - GET /api/journal-entries/stats/ - Statistiques sur les entrées (par catégorie, humeur, etc.)
     - GET /api/journal-entries/calendar/ - Données pour vue calendrier (dates avec entrées)
-    
-    Exemple de sérialisation JSON:
-    {
-        "id": 123,
-        "content": "J'ai terminé le projet principal aujourd'hui !",
-        "mood": 8,
-        "mood_emoji": "😁",  // Champ calculé
-        "category": "Travail",
-        "created_at": "2025-04-19T15:30:22Z",
-        "updated_at": "2025-04-19T15:32:45Z",
-        "media": [  // Relation imbriquée
-            {
-                "id": 45,
-                "type": "image",
-                "file_url": "/media/journal_media/image123.jpg"
-            }
-        ]
-    }
     """
-
+    
     # Choix d'humeur de 1 à 10
     MOOD_CHOICES = [(i, f"{i}/10") for i in range(1, 11)]
     
@@ -52,16 +39,17 @@ class JournalEntry(models.Model):
         9: "🤩", 10: "😍"
     }
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="entries")
-    content = models.TextField(verbose_name="Qu'avez-vous accompli aujourd'hui ?")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="entries", help_text="Utilisateur concerné par l’entrée")
+    content = models.TextField(verbose_name="Qu'avez-vous accompli aujourd'hui ?", help_text="Le contenu de l’entrée de journal")
     mood = models.IntegerField(
         choices=MOOD_CHOICES,
         verbose_name="Note d'humeur",
-        validators=[MinValueValidator(1), MaxValueValidator(10)]
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
+        help_text="La note d'humeur (de 1 à 10) associée à cette entrée"
     )
-    category = models.CharField(max_length=100, verbose_name="Catégorie")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    category = models.CharField(max_length=100, verbose_name="Catégorie", help_text="La catégorie de l'entrée (ex : Travail, Santé)")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Date et heure de création de l’entrée")
+    updated_at = models.DateTimeField(auto_now=True, help_text="Date et heure de la dernière mise à jour")
 
     class Meta:
         verbose_name = "Entrée de journal"
@@ -71,37 +59,28 @@ class JournalEntry(models.Model):
             models.Index(fields=['user', 'created_at']),
             models.Index(fields=['category']),
         ]
-        
-        """
-        Filtres API recommandés:
-        - created_at (date, datetime, range, gte, lte)
-        - mood (exact, gte, lte, range)
-        - category (exact, in)
-        - search (recherche dans le contenu)
-        
-        Permissions API:
-        - Un utilisateur ne doit voir et modifier que ses propres entrées
-        - Limiter le nombre de créations par jour si nécessaire
-        """
-
+    
     def __str__(self):
         return f"{self.user.username} - {self.created_at.date()}"
-        
+
+    def __repr__(self):
+        """
+        Retourne une représentation plus lisible de l'entrée de journal.
+        """
+        return f"<JournalEntry id={self.id} user='{self.user.username}' category='{self.category}' mood='{self.mood}'>"
+
+    def get_absolute_url(self):
+        """
+        Retourne l’URL vers la vue de détail de l’entrée de journal.
+        """
+        return reverse('journalentry-detail', kwargs={'pk': self.pk})
+
     def get_mood_emoji(self):
         """
         Retourne l'emoji correspondant à la note d'humeur.
         
         Returns:
             str: Emoji représentant l'humeur
-            
-        Utilisation dans l'API:
-            Idéal comme champ calculé dans un sérialiseur pour afficher
-            visuellement l'humeur dans l'interface utilisateur.
-            
-        Exemple dans un sérialiseur:
-            @property
-            def mood_emoji(self):
-                return self.instance.get_mood_emoji()
         """
         return self.MOOD_EMOJIS.get(self.mood, "😐")
 
@@ -111,18 +90,6 @@ class JournalEntry(models.Model):
         
         Raises:
             ValidationError: Si le contenu est trop court
-            
-        Utilisation dans l'API:
-            Ces validations doivent être reproduites dans les sérialiseurs
-            pour assurer la cohérence des données.
-            
-        Exemple dans un sérialiseur:
-            def validate_content(self, value):
-                if len(value.strip()) < 5:
-                    raise serializers.ValidationError(
-                        'Le contenu doit comporter au moins 5 caractères.'
-                    )
-                return value
         """
         super().clean()
         if self.content and len(self.content.strip()) < 5:
@@ -136,12 +103,6 @@ class JournalEntry(models.Model):
             La création d'une entrée via l'API déclenchera automatiquement
             toutes ces actions associées. Pas besoin de code supplémentaire
             dans les vues API pour ces fonctionnalités.
-            
-        Note importante:
-            Lors de la sauvegarde d'une entrée depuis l'API, plusieurs 
-            événements sont déclenchés en cascade. Cela peut impacter la performance
-            pour des requêtes à haut volume. Considérer une tâche asynchrone
-            pour la mise à jour des statistiques et badges si nécessaire.
         """
         is_new = self.pk is None
         super().save(*args, **kwargs)
@@ -174,21 +135,11 @@ class JournalEntry(models.Model):
             
         Returns:
             int: Nombre d'entrées à la date spécifiée
-            
-        Utilisation dans l'API:
-            Utile pour les endpoints de statistiques ou pour vérifier
-            si l'utilisateur a atteint une limite quotidienne.
-            
-        Exemple dans une vue:
-            @action(detail=False, methods=['get'])
-            def daily_count(self, request):
-                count = JournalEntry.count_today(request.user)
-                return Response({'count': count})
         """
         if reference_date is None:
             reference_date = now().date()
         return user.entries.filter(created_at__date=reference_date).count()
-        
+
     @classmethod
     def get_entries_by_date_range(cls, user, start_date, end_date):
         """
@@ -201,28 +152,13 @@ class JournalEntry(models.Model):
             
         Returns:
             QuerySet: Entrées dans la plage de dates spécifiée
-            
-        Utilisation dans l'API:
-            Parfait pour les endpoints de calendrier ou de rapports périodiques.
-            
-        Exemple dans une vue:
-            @action(detail=False, methods=['get'])
-            def date_range(self, request):
-                start = request.query_params.get('start')
-                end = request.query_params.get('end')
-                entries = JournalEntry.get_entries_by_date_range(
-                    request.user, 
-                    parse_date(start), 
-                    parse_date(end)
-                )
-                return Response(self.get_serializer(entries, many=True).data)
         """
         return cls.objects.filter(
             user=user,
             created_at__date__gte=start_date,
             created_at__date__lte=end_date
         )
-        
+    
     @classmethod
     def get_category_suggestions(cls, user, limit=10):
         """
@@ -234,15 +170,6 @@ class JournalEntry(models.Model):
             
         Returns:
             list: Liste des catégories les plus utilisées
-            
-        Utilisation dans l'API:
-            Idéal pour un endpoint d'autocomplétion des catégories.
-            
-        Exemple dans une vue:
-            @action(detail=False, methods=['get'])
-            def category_suggestions(self, request):
-                suggestions = JournalEntry.get_category_suggestions(request.user)
-                return Response(suggestions)
         """
         from django.db.models import Count
         
@@ -251,6 +178,71 @@ class JournalEntry(models.Model):
                    .annotate(count=Count('category'))
                    .order_by('-count')
                    .values_list('category', flat=True)[:limit])
+
+
+# 📎 Médias associés à une entrée de journal
+class JournalMedia(models.Model):
+    """
+    Modèle pour stocker les fichiers multimédias associés aux entrées de journal.
+    Permet aux utilisateurs d'enrichir leurs entrées avec des images ou des enregistrements audio.
+    """
+    entry = models.ForeignKey(JournalEntry, on_delete=models.CASCADE, related_name="media", help_text="Entrée de journal à laquelle ce média est associé")
+    file = models.FileField(upload_to="journal_media/", help_text="Fichier multimédia (image, audio, etc.)")
+    type = models.CharField(
+        max_length=10,
+        choices=[("image", "Image"), ("audio", "Audio")],
+        help_text="Type de fichier multimédia (image ou audio)"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Date de création du média")
+
+    class Meta:
+        verbose_name = "Média"
+        verbose_name_plural = "Médias"
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.get_type_display()} pour {self.entry}"
+
+    def file_url(self):
+        """
+        Retourne l'URL complète du fichier.
+        
+        Returns:
+            str: URL du fichier média
+        """
+        if self.file:
+            return self.file.url
+        return None
+
+    def file_size(self):
+        """
+        Retourne la taille du fichier en octets.
+        
+        Returns:
+            int: Taille du fichier en octets
+        """
+        if self.file:
+            return self.file.size
+        return 0
+
+    def validate_file_type(self):
+        """
+        Vérifie si le type de fichier correspond au type déclaré.
+        
+        Raises:
+            ValidationError: Si le type de fichier ne correspond pas
+        """
+        import mimetypes
+        if not self.file:
+            return
+            
+        mime_type, _ = mimetypes.guess_type(self.file.name)
+        
+        if self.type == 'image' and not mime_type.startswith('image/'):
+            raise ValidationError({'file': 'Le fichier doit être une image.'})
+            
+        if self.type == 'audio' and not mime_type.startswith('audio/'):
+            raise ValidationError({'file': 'Le fichier doit être un audio.'})
 
 
 # 📎 Médias associés à une entrée de journal

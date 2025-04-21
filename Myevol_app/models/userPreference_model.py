@@ -1,66 +1,75 @@
-from datetime import timedelta
+#  models/userPreference_model.py
+import logging
+import re
 from django.db import models
-from django.utils.timezone import now
-
 from django.conf import settings
+from django.core.exceptions import ValidationError
+
+# Initialisation du logger
+logger = logging.getLogger(__name__)
+
 User = settings.AUTH_USER_MODEL
 
+# Constants for notification types
+NOTIFICATION_TYPES = ['badge', 'objectif', 'info', 'statistique']
 
 class UserPreference(models.Model):
     """
     Modèle pour stocker les préférences personnalisées de chaque utilisateur.
     Permet de contrôler les notifications et l'apparence de l'application.
     Chaque utilisateur a exactement une instance de ce modèle (relation one-to-one).
-    
-    API Endpoints suggérés:
-    - GET /api/preferences/ - Récupérer les préférences de l'utilisateur courant
-    - PUT/PATCH /api/preferences/ - Mettre à jour les préférences
-    - POST /api/preferences/reset/ - Réinitialiser les préférences aux valeurs par défaut
-    - GET /api/preferences/appearance/ - Récupérer uniquement les paramètres d'apparence
-    - GET /api/preferences/notifications/ - Récupérer uniquement les paramètres de notification
-    
-    Exemple de sérialisation JSON:
-    {
-        "appearance": {
-            "dark_mode": false,
-            "accent_color": "#6C63FF",
-            "font_choice": "Roboto",
-            "enable_animations": true
-        },
-        "notifications": {
-            "badge": true,
-            "objectif": true,
-            "info": true,
-            "statistique": true
-        }
-    }
     """
-
-    # Relation one-to-one avec l'utilisateur (un utilisateur a exactement une préférence)
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="preferences")
+    
+    # Relation one-to-one avec l'utilisateur
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name="preferences", 
+        help_text="Utilisateur auquel ces préférences appartiennent"
+    )
 
     # Préférences de notifications par type
-    notif_badge = models.BooleanField(default=True)        # Notifications pour les badges débloqués
-    notif_objectif = models.BooleanField(default=True)     # Notifications liées aux objectifs
-    notif_info = models.BooleanField(default=True)         # Notifications informatives générales
-    notif_statistique = models.BooleanField(default=True)  # Notifications de statistiques
+    notif_badge = models.BooleanField(
+        default=True,
+        help_text="Active ou désactive les notifications pour les badges débloqués"
+    )
+    notif_objectif = models.BooleanField(
+        default=True,
+        help_text="Active ou désactive les notifications liées aux objectifs"
+    )
+    notif_info = models.BooleanField(
+        default=True,
+        help_text="Active ou désactive les notifications informatives générales"
+    )
+    notif_statistique = models.BooleanField(
+        default=True,
+        help_text="Active ou désactive les notifications de statistiques"
+    )
 
     # Préférences d'apparence
-    dark_mode = models.BooleanField(default=False)                    # Mode sombre activé ou désactivé
-    accent_color = models.CharField(max_length=20, default="#6C63FF")  # Couleur principale pour personnaliser l'interface
-    font_choice = models.CharField(max_length=50, default="Roboto")     # Police de caractères préférée
-    enable_animations = models.BooleanField(default=True)              # Option pour activer/désactiver les animations
+    dark_mode = models.BooleanField(
+        default=False,
+        help_text="Active ou désactive le mode sombre pour l'interface"
+    )
+    accent_color = models.CharField(
+        max_length=20, 
+        default="#6C63FF", 
+        help_text="Couleur principale utilisée dans l'interface. Format hexadécimal (#RRGGBB)"
+    )
+    font_choice = models.CharField(
+        max_length=50, 
+        default="Roboto", 
+        help_text="Police de caractères préférée pour l'interface"
+    )
+    enable_animations = models.BooleanField(
+        default=True, 
+        help_text="Active ou désactive les animations dans l'application"
+    )
 
     class Meta:
         verbose_name = "Préférence utilisateur"
         verbose_name_plural = "Préférences utilisateur"
         ordering = ["user"]
-        
-        """
-        Permissions API:
-        - Un utilisateur ne peut accéder et modifier que ses propres préférences
-        - Adapter les préférences lors des requêtes en fonction de l'utilisateur authentifié
-        """
 
     def __str__(self):
         """
@@ -70,6 +79,28 @@ class UserPreference(models.Model):
             str: Chaîne indiquant à quel utilisateur appartiennent ces préférences
         """
         return f"Préférences de {self.user.username}"
+
+    def __repr__(self):
+        """
+        Retourne une représentation de l'objet utilisateur sous forme de chaîne de caractères.
+        
+        Utilisé principalement dans les logs et les interfaces interactives.
+        
+        Returns:
+            str: Représentation de l'objet UserPreference
+        """
+        return f"<UserPreference user={self.user.username}>"
+
+    def get_absolute_url(self):
+        """
+        Retourne l'URL absolue des préférences de l'utilisateur.
+        
+        Utilisé pour accéder aux préférences de l'utilisateur via son URL dédiée.
+        
+        Returns:
+            str: URL pour accéder aux préférences de l'utilisateur
+        """
+        return f"/users/{self.user.id}/preferences/"
 
     def to_dict(self):
         """
@@ -101,7 +132,7 @@ class UserPreference(models.Model):
                 "statistique": self.notif_statistique,
             }
         }
-        
+
     def get_appearance_settings(self):
         """
         Récupère uniquement les paramètres d'apparence.
@@ -112,20 +143,15 @@ class UserPreference(models.Model):
         Utilisation dans l'API:
             Utile pour un endpoint dédié à l'apparence ou pour
             la récupération rapide des préférences visuelles au chargement.
-            
-        Exemple dans une vue:
-            @action(detail=False, methods=['get'])
-            def appearance(self, request):
-                prefs = request.user.preferences
-                return Response(prefs.get_appearance_settings())
         """
+        logger.info(f"Récupération des paramètres d'apparence pour l'utilisateur {self.user.username}")
         return {
             "dark_mode": self.dark_mode,
             "accent_color": self.accent_color,
             "font_choice": self.font_choice,
             "enable_animations": self.enable_animations
         }
-        
+
     def get_notification_settings(self):
         """
         Récupère uniquement les paramètres de notification.
@@ -136,18 +162,15 @@ class UserPreference(models.Model):
         Utilisation dans l'API:
             Idéal pour vérifier rapidement si un type de notification
             est activé avant d'en envoyer une.
-            
-        Exemple d'utilisation dans une autre partie du code:
-            if user.preferences.get_notification_settings()['badge']:
-                # Envoyer une notification de badge
         """
+        logger.info(f"Récupération des paramètres de notification pour l'utilisateur {self.user.username}")
         return {
             "badge": self.notif_badge,
             "objectif": self.notif_objectif,
             "info": self.notif_info,
             "statistique": self.notif_statistique
         }
-    
+
     def reset_to_defaults(self):
         """
         Réinitialise toutes les préférences aux valeurs par défaut.
@@ -155,14 +178,8 @@ class UserPreference(models.Model):
         Utilisation dans l'API:
             Parfait pour un endpoint permettant à l'utilisateur de
             réinitialiser toutes ses préférences d'un coup.
-            
-        Exemple dans une vue:
-            @action(detail=False, methods=['post'])
-            def reset(self, request):
-                prefs = request.user.preferences
-                prefs.reset_to_defaults()
-                return Response(self.get_serializer(prefs).data)
         """
+        logger.info(f"Réinitialisation des préférences aux valeurs par défaut pour l'utilisateur {self.user.username}")
         self.dark_mode = False
         self.accent_color = "#6C63FF"
         self.font_choice = "Roboto"
@@ -172,7 +189,7 @@ class UserPreference(models.Model):
         self.notif_info = True
         self.notif_statistique = True
         self.save()
-        
+
     @classmethod
     def get_or_create_for_user(cls, user):
         """
@@ -187,15 +204,10 @@ class UserPreference(models.Model):
         Utilisation dans l'API:
             Très utile dans les vues pour s'assurer que l'utilisateur
             a toujours des préférences définies.
-            
-        Exemple dans une vue:
-            def get_object(self):
-                return UserPreference.get_or_create_for_user(self.request.user)
         """
         prefs, created = cls.objects.get_or_create(
             user=user,
             defaults={
-                # Valeurs par défaut définies ici pour être sûr
                 "dark_mode": False,
                 "accent_color": "#6C63FF",
                 "font_choice": "Roboto",
@@ -206,8 +218,12 @@ class UserPreference(models.Model):
                 "notif_statistique": True
             }
         )
+        if created:
+            logger.info(f"Préférences par défaut créées pour l'utilisateur {user.username}")
+        else:
+            logger.info(f"Préférences récupérées pour l'utilisateur {user.username}")
         return prefs
-        
+
     def should_send_notification(self, notif_type):
         """
         Vérifie si un type spécifique de notification est activé.
@@ -232,5 +248,27 @@ class UserPreference(models.Model):
             'info': self.notif_info,
             'statistique': self.notif_statistique
         }
-        return mapping.get(notif_type, False)
+        result = mapping.get(notif_type, False)
+        logger.debug(f"Vérification de la notification '{notif_type}' pour l'utilisateur {self.user.username}: {result}")
+        return result
     
+    
+# ------------------------------------
+# Signaux dans signals/userPreference_signals.py
+# ------------------------------------
+"""
+    - `handle_user_preferences`: Crée les préférences par défaut pour l'utilisateur si elles n'existent pas. 
+      Ce service est appelé pour s'assurer que chaque utilisateur a bien des préférences créées à la première connexion. 
+      Si les préférences existent déjà, elles sont mises à jour avec les nouvelles informations.
+
+    - `get_or_create_for_user`: Récupère ou crée les préférences d'un utilisateur dans le service `userpreference_service`. 
+      Ce service vérifie si l'utilisateur a déjà des préférences associées à son compte, sinon, il les crée avec des valeurs par défaut.
+
+    Les signaux dans ce fichier gèrent les actions automatiques lors de la création ou mise à jour des préférences utilisateur, notamment :
+    - La mise à jour des badges et des streaks de l'utilisateur chaque fois que ses préférences sont modifiées (`handle_user_preference_update`).
+    - La création de préférences par défaut si elles n'existent pas lors de la création du modèle `UserPreference` (`create_default_preferences`).
+    - L'envoi de notifications de mise à jour des préférences à l'utilisateur (`send_notification_on_preference_change`).
+    - La validation des préférences avant leur enregistrement pour garantir la conformité des données (`validate_preferences`).
+
+    Ces signaux permettent d'automatiser la gestion des préférences et d'intégrer facilement la logique de gestion des notifications et des actions utilisateur via des services.
+"""

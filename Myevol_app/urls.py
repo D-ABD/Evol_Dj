@@ -11,5 +11,5 @@ urlpatterns = [
     path('badges/', views.badge_list_view, name='badge_list'),
     path('badges/explorer/', views.badge_explore_view, name='badge_explore'),
     path('notifications/', views.notifications_view, name='notifications'),
-    path('logout/', views.logout_view, name='logout'),  # logout à définir selon ton auth
+    path('logout/', views.logout_view, name='logout'),  # à ajuster selon auth
 ]

@@ -81,11 +81,12 @@ Créer un super utilisateur (admin) :
 
 Ajout de fonctionnalités:
 
-Export des données au format CSV/PDF
 Système de partage/compétition entre utilisateurs
 Intégration avec d'autres applications de santé/fitness
 AJout un tchat et un forum
+🔔 Ajouter une notification "programmée" à afficher plus tard (scheduled_at) ?
 
+📩 Activer une notification email ou push pour les notifications importantes ?
 
 Ajoute une méthode __repr__ dans les modèles principaux (utile pour debug shell, admin ou tests).
 
@@ -151,3 +152,79 @@ Filtrer par notif_type
 Logger plus finement les erreurs
 
 Ajouter les loggs aux models
+
+
+MAJ des model/tests/ok
+
+enrichi avec :
+
+pour tous les prochains, je souhaite que tu e propose des améliorations et les apppliquent
+aprés, que tu mettes à jour avec tes conseils en plus de :  
+✅ __repr__
+✅ get_absolute_url()
+✅ help_text sur tous les champs
+loggs (import loggin...)
+docstrings complet pour que le dev cree les api plus tard
+au besoin, cree les services, signals...logique metier...
+--------------------------------------------------
+--------------------------------------------------
+--------------------------------------------------
+t’ajoute un logger bien structuré
+ Pour que ta doc soit vraiment complète :
+1. Ajoute des @extend_schema sur les vues / viewsets
+Pour que Swagger affiche :
+
+Les params d’entrée (query, body…)
+
+Les réponses (200, 400, 403…)
+
+Les descriptions des endpoints
+
+python
+Copier
+Modifier
+from drf_spectacular.utils import extend_schema
+
+@extend_schema(
+    summary="Liste des objectifs de l'utilisateur",
+    description="Renvoie tous les objectifs actifs de l'utilisateur connecté.",
+    responses={200: ObjectiveSerializer(many=True)}
+)
+def list(self, request):
+    ...
+2. Ajoute des AutoSchema ou get_schema_fields() pour les vues basées sur APIView
+Si tu utilises APIView au lieu de ViewSet, tu peux aussi ajouter :
+
+python
+Copier
+Modifier
+from drf_spectacular.utils import OpenApiParameter
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(name='start_date', required=False, type=str, location=OpenApiParameter.QUERY),
+        OpenApiParameter(name='end_date', required=False, type=str, location=OpenApiParameter.QUERY),
+    ]
+)
+3. Ajoute des descriptions aux champs personnalisés avec @extend_schema_field si besoin
+Exemple :
+
+python
+Copier
+Modifier
+from drf_spectacular.utils import extend_schema_field
+
+@extend_schema_field(serializers.CharField(help_text="Nom complet de l'utilisateur."))
+def get_full_name(self, obj):
+    return obj.get_full_name()
+🔗 Exemple final : /api/docs
+Après tout ça, ta doc sera :
+
+✨ Interactive (essai de requêtes en direct)
+
+🧠 Descriptive (pour chaque champ et paramètre)
+
+🧱 Structurée (chaque endpoint clair, groupé par modèle ou vue)
+
+🔒 Sécurisée (affiche les permissions requises automatiquement si configurées)
+

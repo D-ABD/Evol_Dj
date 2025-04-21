@@ -69,3 +69,4 @@ class BadgeTemplateAdmin(admin.ModelAdmin):
         """Nombre de badges attribués de ce type"""
         return Badge.objects.filter(name=obj.name).count()
     badges_count.short_description = "Badges attribués"
+

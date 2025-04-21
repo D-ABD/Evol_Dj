@@ -1,313 +1,213 @@
-from ..utils.levels import get_user_level, LEVEL_THRESHOLDS, get_user_progress
-
-from datetime import timedelta
-from collections import defaultdict
+# MyEvol_app/models/badge_model.py
 
 from django.db import models
 from django.utils.timezone import now
-from django.core.validators import MinValueValidator, MaxValueValidator
-from django.core.exceptions import ValidationError
-from django.utils.functional import cached_property
-from django.db.models import Avg, Count
-
+from django.urls import reverse
 from django.conf import settings
+
+from ..services.levels_services import get_user_level, get_user_progress
+
 User = settings.AUTH_USER_MODEL
 
-
-
-# 🏅 Badge obtenu
 class Badge(models.Model):
     """
-    Modèle représentant un badge obtenu par un utilisateur.
-    Les badges sont des récompenses pour des accomplissements spécifiques.
+    🏅 Badge réellement attribué à un utilisateur.
     
-    API Endpoints suggérés:
-    - GET /api/badges/ - Liste des badges de l'utilisateur courant
-    - GET /api/users/{id}/badges/ - Liste des badges d'un utilisateur spécifique
-    - GET /api/badges/recent/ - Badges récemment obtenus
-    
-    Exemple de sérialisation JSON:
-    {
-        "id": 1,
-        "name": "Niveau 3",
-        "description": "Tu as atteint le niveau 3 💪",
-        "icon": "🥈",
-        "date_obtenue": "2025-04-20",
-        "level": 3
-    }
+    Les badges sont attribués à un utilisateur lorsqu’il atteint une certaine condition
+    définie dans un BadgeTemplate. Ils servent à motiver l’utilisateur et à gamifier l’expérience.
+
+    API Endpoints recommandés :
+    - GET /api/badges/ : Liste les badges de l’utilisateur courant
+    - GET /api/users/{id}/badges/ : Liste les badges d’un utilisateur donné
+    - GET /api/badges/recent/ : Récupère les badges récents (7 derniers jours)
+
+    Champs calculés à exposer dans l’API :
+    - was_earned_today
+    - is_recent
+    - days_since_earned
     """
-    name = models.CharField(max_length=100)  # Nom du badge
-    description = models.TextField()         # Description du badge
-    icon = models.CharField(max_length=100)  # Icône (chemin ou identifiant)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="badges")
-    date_obtenue = models.DateField(auto_now_add=True)  # Date d'obtention
-    level = models.PositiveIntegerField(null=True, blank=True)  # Niveau du badge (optionnel)
+
+    name = models.CharField(max_length=100, help_text="Nom du badge affiché à l’utilisateur")
+    description = models.TextField(help_text="Texte explicatif du badge (accomplissement)")
+    icon = models.CharField(max_length=100, help_text="Emoji ou nom d’icône visuelle pour le badge")
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="badges",
+        help_text="Utilisateur à qui ce badge a été attribué"
+    )
+    date_obtenue = models.DateField(
+        auto_now_add=True,
+        help_text="Date à laquelle le badge a été obtenu"
+    )
+    level = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Niveau associé au badge (optionnel)"
+    )
 
     class Meta:
         verbose_name = "Badge"
         verbose_name_plural = "Badges"
         ordering = ['-date_obtenue']
-        unique_together = ('name', 'user')  # Un utilisateur ne peut avoir qu'un badge avec le même nom
-        
-        """
-        Filtres API recommandés:
-        - name (exact, contains)
-        - date_obtenue (range, gte, lte)
-        - level (exact, gte, lte)
-        """
+        unique_together = ('name', 'user')
 
     def __str__(self):
-        """Représentation en chaîne de caractères du badge"""
+        """Retourne une représentation lisible du badge."""
         return f"{self.name} ({self.user.username})"
 
+    def __repr__(self):
+        """Retourne une représentation détaillée de l'objet Badge."""
+        return f"<Badge id={self.id} name='{self.name}' user='{self.user.username}'>"
+
+    def get_absolute_url(self):
+        """Retourne l’URL vers la vue de détail du badge."""
+        return reverse("badge-detail", kwargs={"pk": self.pk})
+
     def was_earned_today(self, reference_date=None):
-        """
-        Vérifie si le badge a été obtenu aujourd'hui.
-
-        Args:
-            reference_date (date, optional): Date de référence (aujourd'hui par défaut)
-
-        Returns:
-            bool: True si le badge a été obtenu aujourd'hui, False sinon
-            
-        Utilisation dans l'API:
-            Ce champ peut être exposé comme booléen calculé 'is_new' dans la sérialisation
-            pour permettre à l'interface d'afficher un indicateur visuel pour les nouveaux badges.
-        """
-        if reference_date is None:
-            reference_date = now().date()
+        """Retourne True si le badge a été obtenu aujourd’hui."""
+        reference_date = reference_date or now().date()
         return self.date_obtenue == reference_date
-
-    def save(self, *args, **kwargs):
-        """
-        Surcharge de la méthode save pour créer automatiquement 
-        une notification lorsqu'un badge est attribué.
-        
-        Note pour l'API:
-        Lors de la création d'un badge via l'API, une notification sera également générée.
-        Il n'est pas nécessaire de créer explicitement une notification dans la vue API.
-        """
-        is_new = self.pk is None
-        super().save(*args, **kwargs)
-
-        if is_new:
-            # ⏱ Import local pour éviter les imports circulaires
-            from .notification_model import Notification
-            from .event_log_model import EventLog
-
-            # Crée une notification pour informer l'utilisateur
-            Notification.objects.create(
-                user=self.user,
-                message=f"🏅 Nouveau badge débloqué : {self.name}",
-                notif_type="badge"
-            )
-
-            # Enregistre l'événement dans les logs du système
-            EventLog.objects.create(
-                user=self.user,
-                action="attribution_badge",
-                description=f"Badge '{self.name}' attribué à {self.user.username}"
-            )
-
-
-# 🧩 BadgeTemplate : tous les badges définissables
+    
 class BadgeTemplate(models.Model):
     """
-        Modèle définissant les différents badges disponibles dans l'application.
-        Contient les critères d'attribution des badges aux utilisateurs.
-        
-        Chaque template définit un type de badge qui peut être débloqué selon des conditions
-        spécifiques (nombre d'entrées, régularité, humeur, etc.). Le modèle inclut 
-        également des éléments visuels pour enrichir l'expérience utilisateur.
-        
-        API Endpoints suggérés:
-        - GET /api/badges/templates/ - Liste tous les templates de badges
-        - GET /api/badges/templates/{id}/ - Détails d'un template spécifique
-        - GET /api/badges/templates/categories/ - Templates groupés par catégorie
-        - GET /api/badges/templates/{id}/progress/ - Progression de l'utilisateur vers ce badge
-        
-        Exemple de sérialisation JSON:
-        {
-            "id": 3,
-            "name": "Régulier",
-            "description": "Tu as écrit chaque jour pendant 5 jours ✍️",
-            "icon": "📅",
-            "condition": "5 jours consécutifs avec entrées",
-            "level": 1,
-            "color_theme": "#4CAF50",
-            "animation_url": "https://cdn.myevol.app/animations/regular.json",
-            "progress": {
-                "percent": 80,
-                "current": 4,
-                "target": 5,
-                "unlocked": false
-            }
-        }
+    🧩 Modèle de badge définissant les critères pour l’attribution.
     
+    Chaque template décrit un badge disponible dans le système, ainsi que les conditions
+    pour l’obtenir. Lorsqu’un utilisateur remplit les conditions, un `Badge` est créé
+    automatiquement en se basant sur ce modèle.
+
+    API Endpoints recommandés :
+    - GET /api/badges/templates/ : Liste tous les modèles de badges
+    - GET /api/badges/templates/{id}/ : Détail d’un modèle
+    - GET /api/badges/templates/{id}/progress/ : Progression vers ce badge
+    - POST /api/badges/sync/ : Vérifie quels badges peuvent être débloqués
+
+    Champs utiles pour l’API :
+    - progress (dict)
+    - can_unlock (booléen)
     """
-
-    name = models.CharField(max_length=100, unique=True)  # Nom unique du badge
-    description = models.TextField()                      # Description du badge
-    icon = models.CharField(max_length=100)               # Icône (chemin ou identifiant)
-    condition = models.CharField(max_length=255)          # Description de la condition d'obtention
-    level = models.PositiveIntegerField(null=True, blank=True)  # Niveau du badge (optionnel)
-
-
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Nom unique du badge (ex: 'Régulier', 'Niveau 3')"
+    )
+    description = models.TextField(
+        help_text="Description du badge visible dans l’interface"
+    )
+    icon = models.CharField(
+        max_length=100,
+        help_text="Emoji ou identifiant visuel de l’icône"
+    )
+    condition = models.CharField(
+        max_length=255,
+        help_text="Condition textuelle d’obtention du badge"
+    )
+    level = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Niveau cible (optionnel, utile pour les badges de type 'Niveau X')"
+    )
     animation_url = models.URLField(
         blank=True,
         null=True,
-        help_text="Lien vers une animation Lottie ou GIF pour enrichir l'affichage du badge"
+        help_text="URL d’une animation Lottie ou GIF"
     )
-    color_theme = models.CharField(default="#FFD700", max_length=20)  # couleur du badge
+    color_theme = models.CharField(
+        default="#FFD700",
+        max_length=20,
+        help_text="Couleur HEX du thème visuel du badge"
+    )
+
     class Meta:
         verbose_name = "Modèle de badge"
         verbose_name_plural = "Modèles de badges"
-        
-        """
-        Filtres API recommandés:
-        - name (exact, contains)
-        - condition (contains)
-        - level (exact, gte, lte)
-        """
 
     def __str__(self):
-        """Représentation en chaîne de caractères du template de badge"""
         return self.name
 
+    def __repr__(self):
+        return f"<BadgeTemplate id={self.id} name='{self.name}'>"
+
+    def get_absolute_url(self):
+        """Retourne l’URL vers la vue de détail du modèle de badge."""
+        return reverse("badge-template-detail", kwargs={"pk": self.pk})
+
+    def extract_level_number(self):
+        """Essaie d’extraire un niveau à partir du nom ('Niveau 3')."""
+        try:
+            if self.name.lower().startswith("niveau"):
+                return int(self.name.split(" ")[1])
+        except (ValueError, IndexError):
+            pass
+        return None
+
     def check_unlock(self, user):
-        """
-        Vérifie si un utilisateur remplit les conditions pour débloquer ce badge.
-
-        Cette méthode contient la logique détaillée pour chaque type de badge.
-
-        Args:
-            user (User): L'utilisateur à vérifier
-
-        Returns:
-            bool: True si l'utilisateur remplit les conditions, False sinon
-            
-        Utilisation dans l'API:
-            Cette méthode est idéale pour le calcul de la progression vers les badges:
-            
-            1. Pour les endpoints /api/badges/progress/ qui montrent tous les badges
-               et la progression de l'utilisateur vers leur obtention
-            
-            2. Pour calculer le pourcentage de progression pour des badges complexes,
-               comme les badges de séquence (jours consécutifs)
-               
-        Exemples d'utilisation:
-            # Vérifier si l'utilisateur peut débloquer ce badge
-            can_unlock = badge_template.check_unlock(request.user)
-            
-            # Dans un sérialiseur avec un champ calculé
-            @property
-            def is_unlocked(self):
-                return self.instance.check_unlock(self.context['request'].user)
-        """
+        """Vérifie si l'utilisateur peut débloquer ce badge."""
         total = user.total_entries()
         mood_avg = user.mood_average(7)
 
-        # Dictionnaire des conditions
         conditions = {
             "Première entrée": total >= 1,
             "Régulier": user.has_entries_every_day(5),
             "Discipline": user.has_entries_every_day(10),
             "Résilience": user.has_entries_every_day(15),
             "Légende du Journal": user.has_entries_every_day(30),
-            "Ambassadeur d'humeur": mood_avg is not None and mood_avg >= 9,
+            "Ambassadeur d'humeur": mood_avg and mood_avg >= 9,
             "Productivité": user.entries_today() >= 3,
             "Objectif rempli !": user.all_objectives_achieved(),
             "Persévérance": total >= 100,
         }
 
-        # Condition personnalisée
         if self.name in conditions:
             return conditions[self.name]
 
-        # Cas spécial pour les badges de niveau (ex: "Niveau 3")
-        if self.name.startswith("Niveau"):
-            try:
-                level_number = int(self.name.split(" ")[1])
-                return get_user_level(total) >= level_number
-            except (ValueError, IndexError):
-                return False
+        level_number = self.extract_level_number()
+        if level_number:
+            return get_user_level(total) >= level_number
 
-        return False  # Par défaut, on ne débloque pas
-    
+        return False
+
     def get_progress(self, user):
-        """
-        Calcule la progression d'un utilisateur vers l'obtention de ce badge.
+        """Calcule la progression d’un utilisateur vers ce badge."""
+        total = user.total_entries()
+        unlocked = user.badges.filter(name=self.name).exists()
 
-        Args:
-            user (User): L'utilisateur concerné
-
-        Returns:
-            dict: Contient les informations de progression vers le badge :
-                {
-                    'percent': Pourcentage de progression (int),
-                    'current': Valeur actuelle (ex. nombre d'entrées),
-                    'target': Seuil à atteindre pour débloquer le badge,
-                    'unlocked': Booléen indiquant si le badge est déjà débloqué
-                }
-
-        Utilisé dans l'API pour visualiser les barres de progression.
-        """
-        total = user.total_entries()  # Entrées du journal
-
-        # ✅ Cas 1 : Badge déjà débloqué → progression complète, mais on garde target cohérent
-        if user.badges.filter(name=self.name).exists():
-            try:
-                if self.name.startswith("Niveau"):
-                    level_number = int(self.name.split(" ")[1])
-                    progress_data = get_user_progress(total)
-                    return {
-                        'percent': 100,
-                        'unlocked': True,
-                        'current': total,
-                        'target': progress_data["next_threshold"]
-                    }
-            except Exception:
-                pass  # Si problème dans la logique, on retombe sur le fallback plus bas
-
-            return {
-                'percent': 100,
-                'unlocked': True,
-                'current': total,
-                'target': total
-            }
-
-        # ✅ Cas 2 : Badge "Première entrée"
-        if self.name == "Première entrée":
-            return {
-                'percent': 100 if total >= 1 else 0,
-                'current': min(total, 1),
-                'target': 1,
-                'unlocked': total >= 1
-            }
-
-        # ✅ Cas 3 : Badge de type "Niveau X"
-        elif self.name.startswith("Niveau"):
-            try:
-                level_number = int(self.name.split(" ")[1])
+        if unlocked:
+            level_number = self.extract_level_number()
+            if level_number:
                 progress_data = get_user_progress(total)
                 return {
-                    'percent': 100 if progress_data["level"] >= level_number else progress_data["progress"],
-                    'current': total,
-                    'target': progress_data["next_threshold"],
-                    'unlocked': progress_data["level"] >= level_number
+                    "percent": 100,
+                    "unlocked": True,
+                    "current": total,
+                    "target": progress_data.get("next_threshold", total)
                 }
-            except (ValueError, IndexError, KeyError):
-                return {
-                    'percent': 0,
-                    'unlocked': False,
-                    'current': total,
-                    'target': 0
-                }
+            return {"percent": 100, "unlocked": True, "current": total, "target": total}
 
-        # ✅ Cas 4 : Tous les autres badges personnalisés
+        # Cas spécifiques
+        if self.name == "Première entrée":
+            return {
+                "percent": 100 if total >= 1 else 0,
+                "unlocked": total >= 1,
+                "current": min(total, 1),
+                "target": 1
+            }
+
+        level_number = self.extract_level_number()
+        if level_number:
+            progress_data = get_user_progress(total)
+            return {
+                "percent": 100 if progress_data["level"] >= level_number else progress_data["progress"],
+                "unlocked": progress_data["level"] >= level_number,
+                "current": total,
+                "target": progress_data["next_threshold"]
+            }
+
+        is_unlocked = self.check_unlock(user)
         return {
-            'percent': 100 if self.check_unlock(user) else 0,
-            'unlocked': self.check_unlock(user),
-            'current': total,
-            'target': 1
+            "percent": 100 if is_unlocked else 0,
+            "unlocked": is_unlocked,
+            "current": total,
+            "target": 1
         }

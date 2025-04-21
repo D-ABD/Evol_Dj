@@ -63,3 +63,4 @@ class EventLogAdmin(admin.ModelAdmin):
     metadata_formatted.short_description = "Métadonnées"
 
 
+

@@ -5,4 +5,4 @@ class MyevolAppConfig(AppConfig):
     name = 'Myevol_app'
 
     def ready(self):
-        import Myevol_app.signals
+        import Myevol_app.signals.event_log_signals
