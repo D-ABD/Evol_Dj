@@ -1,53 +1,39 @@
-# signals/objective_signals.py
-
 import logging
 from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
-from ..models.objective_model import Objective
-from ..models.notification_model import Notification
 from django.utils.timezone import now
+
+from ..models.objective_model import Objective
 
 logger = logging.getLogger(__name__)
 
+
 @receiver(post_save, sender=Objective)
-def handle_objective_creation(sender, instance, created, **kwargs):
+def handle_objective_save(sender, instance, created, **kwargs):
     """
-    Signal déclenché lors de la création d'un objectif.
-    Envoie une notification si l'objectif est marqué comme complété.
+    Déclenché à la création ou à la mise à jour d'un objectif.
+
+    - Si créé ➔ Log de création.
+    - Si `done=True` ➔ Notification d'objectif atteint.
     """
     if created:
-        logger.info(f"Création d'un nouvel objectif pour {instance.user.username}: {instance.title}")
-    
+        logger.info(f"[OBJECTIF] Création d'un nouvel objectif '{instance.title}' pour {instance.user.username}.")
+
     if instance.done:
-        # Si l'objectif est marqué comme fait lors de la création
+        from ..models.notification_model import Notification
+
         Notification.objects.create(
             user=instance.user,
             message=f"🎯 Objectif atteint : {instance.title}",
             notif_type="objectif"
         )
-        logger.info(f"Objectif complété : {instance.title} pour {instance.user.username}")
-
-
-@receiver(post_save, sender=Objective)
-def handle_objective_update(sender, instance, created, **kwargs):
-    """
-    Signal déclenché lors de la mise à jour d'un objectif.
-    Si l'objectif est marqué comme complété, envoie une notification.
-    """
-    if not created:
-        if instance.done:
-            Notification.objects.create(
-                user=instance.user,
-                message=f"🎯 Objectif atteint : {instance.title}",
-                notif_type="objectif"
-            )
-            logger.info(f"Objectif mis à jour comme complété : {instance.title} pour {instance.user.username}")
+        logger.info(f"[OBJECTIF] Objectif '{instance.title}' complété par {instance.user.username}.")
 
 
 @receiver(pre_delete, sender=Objective)
-def handle_objective_delete(sender, instance, **kwargs):
+def handle_objective_deletion(sender, instance, **kwargs):
     """
-    Signal déclenché avant la suppression d'un objectif.
-    Log de la suppression.
+    Déclenché avant la suppression d'un objectif.
+    Loggue la suppression.
     """
-    logger.info(f"Suppression de l'objectif {instance.title} pour {instance.user.username}")
+    logger.info(f"[OBJECTIF] Suppression de l'objectif '{instance.title}' pour {instance.user.username}.")

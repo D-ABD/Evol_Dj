@@ -1,26 +1,46 @@
-
-# signals/quote_signals.py
-
 import logging
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from ..models.quote_model import Quote
-from ..services.notification_service import create_user_notification
+from ..services.notification_service import create_admin_notification
 
 logger = logging.getLogger(__name__)
 
+
 @receiver(post_save, sender=Quote)
-def notify_user_of_new_quote(sender, instance, created, **kwargs):
+def handle_quote_post_save(sender, instance, created, **kwargs):
     """
-    Signal déclenché lorsqu'une nouvelle citation est créée.
-    Crée une notification pour informer l'utilisateur de la nouvelle citation.
+    Signal déclenché lorsqu'une citation est créée.
+    - Log la création.
+    - Envoie une notification à l'admin (via create_admin_notification).
+
+    Args:
+        sender (Model): Le modèle émetteur (Quote).
+        instance (Quote): Instance de la citation.
+        created (bool): True si nouvellement créée, False si mise à jour.
     """
     if created:
-        logger.info(f"Nouvelle citation créée : '{instance.text}'")
-        
-        # Crée une notification pour chaque nouvelle citation (par exemple, pour l'administrateur)
-        create_user_notification(
-            user=instance.user,  # Vous pouvez définir un utilisateur ou un admin pour recevoir la notification
-            message=f"Une nouvelle citation a été ajoutée : {instance.text}",
+        preview = instance.text[:50]
+        author = instance.author or "Inconnu"
+        logger.info(f"[QUOTE] Nouvelle citation créée : '{preview}...' — {author}")
+
+        # Notification admin
+        create_admin_notification(
+            message=f"📝 Nouvelle citation ajoutée : '{preview}...' — {author}",
             notif_type="info"
         )
+
+
+@receiver(post_delete, sender=Quote)
+def handle_quote_post_delete(sender, instance, **kwargs):
+    """
+    Signal déclenché lors de la suppression d'une citation.
+    Log l'événement.
+
+    Args:
+        sender (Model): Le modèle émetteur (Quote).
+        instance (Quote): Instance supprimée.
+    """
+    preview = instance.text[:50]
+    author = instance.author or "Inconnu"
+    logger.info(f"[QUOTE] Citation supprimée : '{preview}...' — {author}")

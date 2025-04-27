@@ -37,9 +37,11 @@ class Badge(models.Model):
         help_text="Utilisateur à qui ce badge a été attribué"
     )
     date_obtenue = models.DateField(
-        auto_now_add=True,
+        auto_now_add=True, 
+        db_index=True, 
         help_text="Date à laquelle le badge a été obtenu"
-    )
+        )
+
     level = models.PositiveIntegerField(
         null=True,
         blank=True,

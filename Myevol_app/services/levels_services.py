@@ -1,52 +1,62 @@
-
-#: Liste des seuils fixes correspondant aux 5 premiers niveaux de l'utilisateur.
-#: Utilisée pour calculer la progression jusqu'au niveau 5.
-#: Au-delà, la progression se fait par palier de 15 entrées par niveau.
-LEVEL_THRESHOLDS = [1, 5, 10, 20, 35]
+# Liste des seuils fixes correspondant aux 10 premiers niveaux de l'utilisateur.
+LEVEL_THRESHOLDS = [1, 5, 10, 20, 35, 50, 75, 100, 150, 200]
 
 def get_user_level(entry_count: int) -> int:
     """
-    Calcule le niveau d’un utilisateur en fonction du nombre d’entrées.
-    Le niveau augmente selon un palier fixe puis par incrément après le niveau 5.
+    Détermine le niveau d’un utilisateur basé sur son nombre total d’entrées de journal.
+
+    Le niveau augmente en fonction des seuils définis dans `LEVEL_THRESHOLDS`.
+    Par exemple :
+    - < 1 entrée → niveau 0
+    - ≥ 1 et < 5 entrées → niveau 1
+    - ≥ 5 et < 10 entrées → niveau 2
+    - ...
+    - ≥ 200 entrées → niveau 10
+
+    Args:
+        entry_count (int): Nombre total d’entrées de journal de l'utilisateur.
+
+    Returns:
+        int: Niveau actuel de l'utilisateur (entre 0 et 10).
     """
-    if entry_count < 1:
-        return 0
-    elif entry_count < 5:
-        return 1
-    elif entry_count < 10:
-        return 2
-    elif entry_count < 20:
-        return 3
-    elif entry_count < 35:
-        return 4
-    else:
-        # Progression régulière tous les 15 journaux après le niveau 4
-        return 5 + ((entry_count - 35) // 15)
-LEVEL_THRESHOLDS = [1, 5, 10, 20, 35, 50, 75, 100, 150, 200]
+    for i, threshold in enumerate(LEVEL_THRESHOLDS):
+        if entry_count < threshold:
+            return i
+    return len(LEVEL_THRESHOLDS)  # Niveau maximal atteint
 
 
 def get_user_progress(entry_count: int) -> dict:
     """
-    Retourne un dictionnaire contenant :
+    Calcule les informations de progression de l'utilisateur vers le prochain niveau.
+
+    Cette fonction retourne :
     - le niveau actuel,
-    - la progression en pourcentage vers le niveau suivant,
-    - le seuil du niveau suivant,
-    - le nombre total d’entrées.
+    - le pourcentage de progression vers le niveau suivant (entre 0 et 100),
+    - le seuil du prochain niveau,
+    - le nombre d'entrées totales.
+
+    Args:
+        entry_count (int): Nombre total d’entrées de journal de l'utilisateur.
+
+    Returns:
+        dict: Un dictionnaire contenant les clés :
+            - "level" (int)
+            - "progress" (int)
+            - "next_threshold" (int)
+            - "entries" (int)
     """
     level = get_user_level(entry_count)
 
-    # Liste des seuils fixes jusqu’au niveau 5
-    thresholds = [1, 5, 10, 20, 35]
-
-    # Définition des seuils actuel et suivant
-    if level < 5:
-        current_threshold = thresholds[level - 1] if level > 0 else 0
-        next_threshold = thresholds[level]
+    if level == 0:
+        current_threshold = 0
+        next_threshold = LEVEL_THRESHOLDS[0]
+    elif level < len(LEVEL_THRESHOLDS):
+        current_threshold = LEVEL_THRESHOLDS[level - 1]
+        next_threshold = LEVEL_THRESHOLDS[level]
     else:
-        current_threshold = 35 + (level - 5) * 15
-        next_threshold = current_threshold + 15
+        current_threshold = LEVEL_THRESHOLDS[-1]
+        next_threshold = current_threshold + 1  # optionnel
 
-    # Calcul de la progression (0-100 %)
     if next_threshold > current_threshold:
         raw_progress = (entry_count - current_threshold) / (next_threshold - current_threshold)
         progress = min(100, max(0, int(raw_progress * 100)))

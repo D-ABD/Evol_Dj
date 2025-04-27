@@ -1,40 +1,63 @@
-# services/user_service.py
-
-from ..models.userPreference_model import UserPreference
+import logging
 from ..models.user_model import User
+from ..models.userPreference_model import UserPreference
 from .badge_service import update_user_badges
 from .streak_service import update_user_streak
-from .userpreference_service import create_preferences_for_user
-import logging
+from .userpreference_service import create_or_update_preferences
 
 logger = logging.getLogger(__name__)
 
+
 def handle_user_badges(user):
     """
-    Met à jour les badges pour l'utilisateur.
+    Met à jour les badges de l'utilisateur via sa méthode de modèle.
+    
+    Args:
+        user (User): L'utilisateur concerné.
     """
     try:
-        update_user_badges(user)
-        logger.info(f"Badges mis à jour pour {user.username}.")
+        user.update_badges()
     except Exception as e:
-        logger.error(f"Erreur lors de la mise à jour des badges pour {user.username}: {e}")
+        logger.error(f"[USER] ❌ Erreur lors de la mise à jour des badges pour {user.username} : {e}")
+
 
 def handle_user_streak(user):
     """
-    Met à jour les streaks de l'utilisateur.
+    Met à jour les streaks (séries) de l'utilisateur via sa méthode de modèle.
+
+    Args:
+        user (User): L'utilisateur concerné.
     """
     try:
-        update_user_streak(user)
-        logger.info(f"Streaks mis à jour pour {user.username}.")
+        user.update_streaks()
     except Exception as e:
-        logger.error(f"Erreur lors de la mise à jour des streaks pour {user.username}: {e}")
+        logger.error(f"[USER] ❌ Erreur lors de la mise à jour des streaks pour {user.username} : {e}")
+
 
 def handle_user_preferences(user):
     """
-    Crée les préférences par défaut pour l'utilisateur si elles n'existent pas.
+    Crée ou met à jour les préférences par défaut de l'utilisateur via sa méthode de modèle.
+
+    Args:
+        user (User): L'utilisateur concerné.
     """
     try:
-        create_preferences_for_user(user)
-        logger.info(f"Préférences par défaut créées pour {user.username}.")
+        user.create_default_preferences()
     except Exception as e:
-        logger.error(f"Erreur lors de la création des préférences pour {user.username}: {e}")
+        logger.error(f"[USER] ❌ Erreur lors de la création des préférences pour {user.username} : {e}")
+
+
+def initialize_user_profile(user):
+    """
+    Appelle les routines d'initialisation pour un nouvel utilisateur :
+    - Préférences
+    - Badges
+    - Streaks
+
+    Args:
+        user (User): L'utilisateur fraîchement créé.
+    """
+    logger.info(f"[USER INIT] Initialisation du profil pour {user.username}")
+    handle_user_preferences(user)
+    handle_user_streak(user)
+    handle_user_badges(user)

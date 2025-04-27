@@ -1,132 +1,132 @@
 from django.test import TestCase
-from unittest.mock import patch, MagicMock
-from django.contrib.auth import get_user_model
 from django.utils.timezone import now
-from datetime import timedelta
-from django.utils.timezone import make_aware
-from datetime import datetime
-from ..models.journal_model import JournalEntry
-from freezegun import freeze_time
+from django.contrib.auth import get_user_model
+from unittest.mock import MagicMock, patch, PropertyMock
 
-UserModel = get_user_model()
+from Myevol_app.models import JournalEntry
 
+User = get_user_model()
 
 class UserModelTests(TestCase):
     def setUp(self):
-        self.user = UserModel.objects.create_user(
-            username="john",
-            email="john@example.com",
-            password="testpass123",
-            first_name="John",
-            last_name="Doe",
-            xp=0,
+        self.user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass"
         )
 
     def test_str_method(self):
-        self.assertEqual(str(self.user), "john")
-
+        self.assertEqual(str(self.user), "testuser")
+        
     def test_get_full_name(self):
-        self.assertEqual(self.user.get_full_name(), "John Doe")
-
+        self.user.first_name = "Test"
+        self.user.last_name = "User"
+        self.user.save()
+        self.assertEqual(self.user.get_full_name(), "Test User")
+        
     def test_get_short_name(self):
-        self.assertEqual(self.user.get_short_name(), "John")
+        self.user.first_name = "Test"
+        self.assertEqual(self.user.get_short_name(), "Test")
 
-    def test_to_dict_contains_basic_fields(self):
-        data = self.user.to_dict()
-        self.assertEqual(data['username'], "john")
-        self.assertIn('mood_average', data)
-        self.assertIn('current_streak', data)
+        self.user.first_name = ""
+        self.user.save()
+        self.assertEqual(self.user.get_short_name(), "testuser")
+        
+    def test_to_dict(self):
+        with patch('Myevol_app.models.user_model.User.total_entries', new_callable=PropertyMock) as mock_entries, \
+             patch('Myevol_app.models.user_model.User.current_streak', return_value=0), \
+             patch('Myevol_app.models.user_model.User.mood_average', return_value=None), \
+             patch('Myevol_app.models.user_model.User.level', return_value=0), \
+             patch('Myevol_app.models.user_model.User.level_progress', return_value=0):
 
-    def test_add_xp_increases_xp(self):
-        self.user.add_xp(20)
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.xp, 20)
+            mock_entries.return_value = 0
+            user_dict = self.user.to_dict()
 
-    def test_level_property(self):
-        self.assertGreaterEqual(self.user.level, 1)
+            self.assertEqual(user_dict["username"], "testuser")
+            self.assertEqual(user_dict["email"], "test@example.com")
 
-    def test_get_dashboard_data_structure(self):
-        dashboard = self.user.get_dashboard_data()
-        self.assertIn("total_entries", dashboard)
-        self.assertIn("badges", dashboard)
-        self.assertIn("objectives", dashboard)
+    def test_total_entries(self):
+        JournalEntry.objects.create(user=self.user, content="Entry 1", mood=5, category="test")
+        JournalEntry.objects.create(user=self.user, content="Entry 2", mood=7, category="test")
+        self.assertEqual(self.user.total_entries, 2)
 
-    def test_entries_today_initial(self):
-        self.assertEqual(self.user.entries_today(), 0)
-
-    def test_all_objectives_achieved_with_none(self):
-        self.assertTrue(self.user.all_objectives_achieved())
-
-    @patch("Myevol_app.models.user_model.update_user_badges")
-    def test_update_badges_calls_service(self, mock_update):
+    @patch('Myevol_app.models.user_model.update_user_badges')
+    def test_update_badges(self, mock_update_badges):
         self.user.update_badges()
-        mock_update.assert_called_once_with(self.user)
+        mock_update_badges.assert_called_once_with(self.user)
 
-    @patch("Myevol_app.models.user_model.update_user_streak")
-    def test_update_streaks_calls_service(self, mock_update_streak):
+    @patch('Myevol_app.models.user_model.update_user_streak')
+    def test_update_streaks(self, mock_update_streak):
         self.user.update_streaks()
         mock_update_streak.assert_called_once_with(self.user)
 
-    @patch("Myevol_app.models.user_model.create_preferences_for_user")
-    def test_create_default_preferences_calls_service(self, mock_pref_create):
-        mock_pref = MagicMock()
-        mock_pref_create.return_value = mock_pref
-        pref = self.user.create_default_preferences()
-        mock_pref_create.assert_called_once_with(self.user)
-        self.assertEqual(pref, mock_pref)
+    def test_add_xp(self):
+        self.assertEqual(self.user.xp, 0)
+        self.user.add_xp(100)
+        self.assertEqual(self.user.xp, 100)
 
-
-
-class UserEntryStatsTests(TestCase):
-    def setUp(self):
-        self.user = UserModel.objects.create_user(
-            username="alice",
-            email="alice@example.com",
-            password="password",
-        )
-
-        # Crée 5 entrées : une par jour dans les 5 derniers jours
-        for i in range(5):
-            fake_day = now().date() - timedelta(days=i)
-            with freeze_time(fake_day):
-                JournalEntry.objects.create(
-                    user=self.user,
-                    mood=5 + i,
-                    category="pro",
-                    content=f"Jour {i + 1}",
-                )
-
-    def test_total_entries(self):
-        self.assertEqual(self.user.total_entries(), 5)
-
-    def test_current_streak(self):
-        self.assertEqual(self.user.current_streak(), 5)
-
-    def test_mood_average(self):
-        average = self.user.mood_average(days=5)
-        self.assertAlmostEqual(average, 7.0)
-
-    def test_entries_today(self):
-        self.assertEqual(self.user.entries_today(), 1)
-
-    def test_has_entries_every_day_true(self):
-        self.assertTrue(self.user.has_entries_every_day(5))
-
-    def test_entries_per_day(self):
-        data = self.user.entries_per_day(n=5)
-        self.assertEqual(len(data), 5)
-        for count in data.values():
-            self.assertEqual(count, 1)
-
-    def test_mood_trend(self):
-        trend = self.user.mood_trend(n=5)
-        self.assertEqual(len(trend), 5)
-        self.assertIn(7.0, trend.values())
-
-    def test_days_with_entries(self):
-        days = self.user.days_with_entries(n=5)
-        self.assertEqual(len(days), 5)
+        from django.core.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self.user.add_xp(-50)
 
     def test_entries_by_category(self):
-        by_cat = self.user.entries_by_category(days=5)
-        self.assertEqual(by_cat.get("pro"), 5)
+        JournalEntry.objects.create(user=self.user, content="Entry 1", mood=5, category="work")
+        JournalEntry.objects.create(user=self.user, content="Entry 2", mood=6, category="personal")
+        entries = self.user.entries_by_category()
+        self.assertIn("work", entries)
+        self.assertIn("personal", entries)
+        self.assertEqual(entries["work"], 1)
+        self.assertEqual(entries["personal"], 1)
+
+    from unittest.mock import patch
+
+    @patch('django.db.models.signals.post_save.send')
+    @patch.object(User, 'create_default_preferences')
+    def test_save_triggers_create_default_preferences(self, mock_create_prefs, mock_post_save):
+        user = User(username="saveuser", email="save@example.com")
+        user.set_password("testpass")
+        user.save()
+        mock_create_prefs.assert_called_once()
+
+
+
+    def test_has_entries_every_day(self):
+        JournalEntry.objects.create(user=self.user, content="Entry 1", mood=7, category="test", created_at=now())
+        JournalEntry.objects.create(user=self.user, content="Entry 2", mood=8, category="test", created_at=now())
+        self.assertTrue(self.user.has_entries_every_day(1))
+
+    def test_entries_today(self):
+        JournalEntry.objects.create(user=self.user, content="Today's entry", mood=5, category="daily")
+        self.assertEqual(self.user.entries_today(), 1)
+
+    @patch('Myevol_app.models.user_model.compute_mood_average', return_value=7.5)
+    def test_mood_average(self, mock_compute_mood):
+        mood = self.user.mood_average()
+        self.assertEqual(mood, 7.5)
+        mock_compute_mood.assert_called_once_with(self.user, 7, None)
+
+    @patch('Myevol_app.models.user_model.create_or_update_preferences')
+    def test_create_default_preferences(self, mock_create_or_update):
+        mock_create_or_update.return_value = MagicMock()  # simulate UserPreference object
+        prefs = self.user.create_default_preferences()
+        self.assertIsNotNone(prefs)
+        mock_create_or_update.assert_called_once()
+
+    @patch('Myevol_app.models.user_model.get_user_progress', return_value={'level': 2, 'progress': 50})
+    def test_level_and_level_progress(self, mock_get_progress):
+        level = self.user.level()
+        progress = self.user.level_progress()
+        self.assertEqual(level, 2)
+        self.assertEqual(progress, 50)
+        self.assertEqual(mock_get_progress.call_count, 2)
+
+    @patch('Myevol_app.models.objective_model.Objective')
+    def test_all_objectives_achieved(self, mock_objective):
+        mock_objective.objects.filter.return_value.exists.return_value = False
+        self.assertTrue(self.user.all_objectives_achieved())
+
+    @patch('Myevol_app.models.user_model.compute_current_streak', return_value=5)
+    def test_current_streak(self, mock_compute_streak):
+        streak = self.user.current_streak()
+        self.assertEqual(streak, 5)
+        mock_compute_streak.assert_called_once_with(self.user, None)

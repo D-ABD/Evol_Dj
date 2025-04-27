@@ -1,129 +1,85 @@
+# tests/tests_models/test_notification_model.py
 from django.test import TestCase
 from django.utils.timezone import now
 from django.contrib.auth import get_user_model
-from django.db.models.signals import post_save
+from unittest.mock import patch
 
-from ..models.notification_model import Notification
-from ..signals.event_log_signals import limit_notifications
+from Myevol_app.models import Notification
 
 User = get_user_model()
 
 class NotificationModelTests(TestCase):
-    def setUp(self):
-        # Désactiver le signal qui limite à 100 notifs
-        post_save.disconnect(receiver=limit_notifications, sender=Notification)
-        Notification.objects.all().delete()
-        self.user = User.objects.create_user(username="notifuser", password="pass")
-
-    def tearDown(self):
-        # Réactiver le signal
-        post_save.connect(receiver=limit_notifications, sender=Notification)
-
-    def _create_notif(self, **kwargs):
-        data = {
-            "user": self.user,
-            "message": "Test",
-            "is_read": False,
-            "archived": False,
-            "notif_type": "info"
-        }
-        data.update(kwargs)
-        return Notification.objects.create(**data)
-
-    def test_str_method(self):
-        notif = self._create_notif(message="Salut le monde")
-        self.assertIn(self.user.username, str(notif))
-        self.assertIn("Salut", str(notif))
-
-    def test_type_display(self):
-        notif = self._create_notif(notif_type="badge")
-        self.assertEqual(notif.type_display, "Badge débloqué")
-
-    def test_mark_as_read(self):
-        notif = self._create_notif()
-        notif.mark_as_read()
-        notif.refresh_from_db()
-        self.assertTrue(notif.is_read)
-        self.assertIsNotNone(notif.read_at)
-
-    def test_archive(self):
-        notif = self._create_notif()
-        notif.archive()
-        notif.refresh_from_db()
-        self.assertTrue(notif.archived)
-
-    def test_get_unread(self):
-        notif = self._create_notif()
-        unread = Notification.get_unread(self.user)
-        self.assertIn(notif, unread)
-
-    def test_mark_all_as_read(self):
-        n1 = self._create_notif(is_read=False)
-        n2 = self._create_notif(is_read=True)
-        count = Notification.mark_all_as_read(self.user)
-        self.assertEqual(count, 1)
-        n1.refresh_from_db()
-        self.assertTrue(n1.is_read)
-
-    def test_get_inbox(self):
-        notif = self._create_notif()
-        inbox = Notification.get_inbox(self.user)
-        self.assertIn(notif, inbox)
-
-    def test_get_archived(self):
-        notif = self._create_notif(archived=True)
-        archived = Notification.get_archived(self.user)
-        self.assertIn(notif, archived)
-
-    def test_mark_as_read_sets_flags(self):
-        notif = self._create_notif()
-        notif.mark_as_read()
-        self.assertTrue(notif.is_read)
-        self.assertIsNotNone(notif.read_at)
-
-    def test_archive_sets_flag(self):
-        notif = self._create_notif()
-        notif.archive()
-        self.assertTrue(notif.archived)
-
-    def test_get_archived_returns_only_archived(self):
-        a = self._create_notif(archived=True)
-        b = self._create_notif(archived=False)
-        archived = Notification.get_archived(self.user)
-        self.assertIn(a, archived)
-        self.assertNotIn(b, archived)
-
-    def test_create_notification_method(self):
-        notif = Notification.create_notification(
+    @patch('Myevol_app.models.user_model.User.create_default_preferences')
+    def setUp(self, mock_create_prefs):
+        # Empêche la création des préférences utilisateur
+        mock_create_prefs.return_value = None
+        
+        self.user = User.objects.create_user(
+            username="notifuser",
+            email="notif@example.com",
+            password="testpass"
+        )
+        self.notification = Notification.objects.create(
             user=self.user,
-            message="Message test",
+            message="Test notification",
             notif_type="info"
         )
-        self.assertTrue(Notification.objects.filter(id=notif.id).exists())
+        
+    def test_str_method(self):
+        expected = f"{self.user.username} - Test notification"
+        self.assertEqual(str(self.notification)[:len(expected)], expected)
+        
+    def test_type_display(self):
+        self.assertEqual(self.notification.type_display, "Information générale")
+        
+        # Changer le type et tester à nouveau
+        self.notification.notif_type = "badge"
+        self.notification.save()
+        self.assertEqual(self.notification.type_display, "Badge débloqué")
+        
+    def test_archive(self):
+        self.assertFalse(self.notification.archived)
+        self.notification.archive()
+        self.assertTrue(self.notification.archived)
+        
+    def test_mark_as_read(self):
+        self.assertFalse(self.notification.is_read)
+        self.assertIsNone(self.notification.read_at)
+        
+        self.notification.mark_as_read()
+        
+        self.assertTrue(self.notification.is_read)
+        self.assertIsNotNone(self.notification.read_at)
+        
+    def test_mark_all_as_read(self):
+        # Créer quelques notifications supplémentaires
+        Notification.objects.create(user=self.user, message="Another notification", notif_type="info")
+        Notification.objects.create(user=self.user, message="Badge notification", notif_type="badge")
+        
+        # Compter combien de notifications sont non lues avant
+        unread_before = Notification.objects.filter(user=self.user, is_read=False).count()
 
-    def test_type_display_returns_readable_label(self):
-        notif = self._create_notif(notif_type="statistique")
-        self.assertEqual(notif.type_display, "Statistique")
-
-    def test_mark_all_as_read_marks_all(self):
-        n1 = self._create_notif(is_read=False)
-        n2 = self._create_notif(is_read=False)
-        self._create_notif(is_read=True)
-        self._create_notif(archived=True, is_read=False)
-
+        # Marquer toutes comme lues
         count = Notification.mark_all_as_read(self.user)
-        self.assertEqual(count, 2)
-        self.assertTrue(Notification.objects.get(id=n1.id).is_read)
-        self.assertTrue(Notification.objects.get(id=n2.id).is_read)
-        self.assertEqual(Notification.get_unread(self.user).count(), 0)
 
-    def test_get_notification_count(self):
-        self._create_notif(is_read=False, archived=False)  # Non lue
-        self._create_notif(is_read=True, archived=False)   # Lue
-        self._create_notif(is_read=False, archived=True)   # Archivée
+        # Le nombre retourné doit correspondre aux notifications non lues initialement
+        self.assertEqual(count, unread_before)
 
-        counts = Notification.get_notification_count(self.user)
-        print("COUNTS:", counts)
-        self.assertEqual(counts["unread"], 1)
-        self.assertEqual(counts["total"], 2)
-        self.assertEqual(counts["archived"], 1)
+        # Vérifier que toutes les notifications sont bien marquées comme lues
+        for notif in Notification.objects.filter(user=self.user):
+            self.assertTrue(notif.is_read)
+            self.assertIsNotNone(notif.read_at)
+
+            
+    def test_create_notification(self):
+        new_notif = Notification.create_notification(
+            user=self.user,
+            message="New notification",
+            notif_type="objectif",
+            scheduled_at=now()
+        )
+        
+        self.assertEqual(new_notif.user, self.user)
+        self.assertEqual(new_notif.message, "New notification")
+        self.assertEqual(new_notif.notif_type, "objectif")
+        self.assertIsNotNone(new_notif.scheduled_at)

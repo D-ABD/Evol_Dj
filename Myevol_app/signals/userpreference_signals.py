@@ -1,93 +1,78 @@
 # signals/userPreference_signals.py
 
 import logging
-from django.shortcuts import get_object_or_404
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.conf import settings
+from django.core.exceptions import ValidationError
+
+from ..models.user_model import User
 from ..models.userPreference_model import UserPreference
-from ..services.userpreference_service import create_or_update_preferences
 
 logger = logging.getLogger(__name__)
 
-@receiver(post_save, sender=UserPreference)
-def handle_user_preference_update(sender, instance, created, **kwargs):
+@receiver(pre_save, sender=UserPreference)
+def validate_user_preferences(sender, instance, **kwargs):
     """
-    Signal qui gère la mise à jour des préférences après la création ou la modification d'un objet UserPreference.
-    
-    Args:
-        sender: Le modèle ayant envoyé le signal (UserPreference).
-        instance: L'instance de l'objet UserPreference créé ou mis à jour.
-        created: Boolean indiquant si l'instance est nouvellement créée.
-        **kwargs: Autres arguments du signal.
+    Valide certaines contraintes avant la sauvegarde des préférences utilisateur.
+
+    Par exemple, limite la longueur de la couleur accentuée.
+    """
+    if len(instance.accent_color) > 7:
+        logger.warning(f"[PREF] Couleur accent trop longue pour {instance.user.username}, ajustement automatique.")
+        instance.accent_color = instance.accent_color[:7]
+    logger.debug(f"[PREF] Préférences validées pour {instance.user.username}.")
+
+@receiver(post_save, sender=UserPreference)
+def handle_user_preferences_save(sender, instance, created, **kwargs):
+    """
+    Signal déclenché après la création ou mise à jour d'une instance de UserPreference.
+
+    - Logue l'action
+    - Met à jour les badges si nécessaire
+    - Envoie une notification par e-mail si modifié
     """
     if created:
-        logger.info(f"Préférences créées pour l'utilisateur {instance.user.username}")
+        logger.info(f"[PREF] Préférences créées pour {instance.user.username}.")
     else:
-        logger.info(f"Préférences mises à jour pour l'utilisateur {instance.user.username}")
-    
-    # Action supplémentaire après la création ou mise à jour (par exemple, notifications)
+        logger.info(f"[PREF] Préférences mises à jour pour {instance.user.username}.")
+        logger.info(f"[PREF] Mode sombre: {instance.dark_mode}, Couleur accent: {instance.accent_color}")
+
+        # Envoi d'un e-mail de confirmation
+        send_preference_update_notification(instance.user)
+
+    # Mise à jour des badges liée aux préférences
     try:
         instance.user.update_badges()
     except ValidationError as e:
-        logger.error(f"Erreur lors de la mise à jour des badges pour {instance.user.username}: {e}")
-
-@receiver(post_save, sender=UserPreference)
-def create_default_preferences(sender, instance, created, **kwargs):
-    """
-    Crée les préférences par défaut pour l'utilisateur si elles n'ont pas été créées automatiquement.
-    """
-    if created:
-        logger.info(f"Préférences créées pour l'utilisateur {instance.user.username}")
-        instance.create_default_preferences()
-    else:
-        logger.info(f"Préférences mises à jour pour l'utilisateur {instance.user.username}")
-
-
-@receiver(pre_save, sender=UserPreference)
-def validate_preferences(sender, instance, **kwargs):
-    """
-    Valider les préférences avant leur enregistrement.
-    """
-    if len(instance.accent_color) > 7:
-        logger.warning(f"Couleur accent trop longue pour {instance.user.username}, modification nécessaire.")
-        instance.accent_color = instance.accent_color[:7]  # Couper à la longueur correcte
-    if instance.xp < 0:
-        raise ValidationError("XP ne peut pas être négatif.")
-    logger.info(f"Préférences validées avant l'enregistrement pour {instance.user.username}.")
+        logger.error(f"[PREF] Erreur lors de la mise à jour des badges de {instance.user.username}: {e}")
 
 def send_preference_update_notification(user):
     """
-    Envoie une notification par email à l'utilisateur lorsque ses préférences sont modifiées.
+    Envoie un e-mail à l'utilisateur pour confirmer la mise à jour de ses préférences.
     """
-    subject = "Mise à jour de vos préférences"
-    message = f"Bonjour {user.username},\n\nVos préférences d'application ont été mises à jour avec succès.\n\nCordialement,\nL'équipe de MyEvol."
+    subject = "📱 Mise à jour de vos préférences sur MyEvol"
+    message = (
+        f"Bonjour {user.username},\n\n"
+        "Vos préférences ont été mises à jour avec succès.\n"
+        "Merci d'utiliser MyEvol !\n\n"
+        "— L'équipe MyEvol"
+    )
     from_email = settings.DEFAULT_FROM_EMAIL
 
     try:
         send_mail(subject, message, from_email, [user.email])
-        logger.info(f"Email de notification envoyé à {user.email}")
+        logger.info(f"[MAIL] Notification envoyée à {user.email}")
     except Exception as e:
-        logger.error(f"Erreur lors de l'envoi de l'email de notification à {user.email}: {e}")
+        logger.error(f"[MAIL] Échec d'envoi à {user.email}: {e}")
 
-@receiver(post_save, sender=UserPreference)
-def send_notification_on_preference_change(sender, instance, created, **kwargs):
+@receiver(post_save, sender=User)
+def sync_user_preferences(sender, instance, **kwargs):
     """
-    Envoie une notification à l'utilisateur lorsque ses préférences sont mises à jour.
+    Synchronise certains champs de préférences utilisateur après mise à jour du profil.
     """
-    if not created:
-        # Exemple d'envoi d'email de notification sur mise à jour des préférences
-        logger.info(f"Envoi de notification à {instance.user.username} après mise à jour des préférences.")
-        # L'appel à la méthode de notification (ex: email ou enregistrement dans une file d'attente de notification)
-        send_preference_update_notification(instance.user)
-
-@receiver(post_save, sender=UserPreference)
-def log_preferences_change(sender, instance, created, **kwargs):
-    """
-    Log les modifications des préférences d'un utilisateur pour un suivi.
-    """
-    if not created:
-        logger.info(f"Changement de préférence pour l'utilisateur {instance.user.username}.")
-        logger.info(f"Paramètre changé: {instance.accent_color}, Mode sombre: {instance.dark_mode}.")
+    prefs = getattr(instance, "preferences", None)
+    if prefs:
+        # Exemple : synchroniser une langue ou un thème
+        prefs.save()

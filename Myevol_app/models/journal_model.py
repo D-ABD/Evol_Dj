@@ -9,6 +9,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.conf import settings
 
+
 # Logger importé pour la journalisation
 logger = logging.getLogger(__name__)
 
@@ -98,30 +99,27 @@ class JournalEntry(models.Model):
     def save(self, *args, **kwargs):
         """
         Surcharge de save : met à jour les stats, badges, streaks, défis.
-        
-        Utilisation dans l'API:
-            La création d'une entrée via l'API déclenchera automatiquement
-            toutes ces actions associées. Pas besoin de code supplémentaire
-            dans les vues API pour ces fonctionnalités.
         """
         is_new = self.pk is None
         super().save(*args, **kwargs)
 
         if is_new:
-            # ⏱ Import local pour éviter les imports circulaires
-            from .stats_model import DailyStat
-            from .challenge_model import check_challenges
+            # Import local pour éviter les imports circulaires
+            from Myevol_app.models.stats_model import DailyStat
+            
+            # Importation locale de la fonction check_challenges
+            from Myevol_app.services.challenge_service import check_challenges
 
-            # ➕ Mise à jour des statistiques journalières
+            # Mise à jour des statistiques journalières
             DailyStat.generate_for_user(self.user, self.created_at.date())
 
-            # ✅ Vérification des défis
+            # Vérification des défis
             check_challenges(self.user)
 
-            # 🏅 Mise à jour des badges
+            # Mise à jour des badges
             self.user.update_badges()
 
-            # 🔥 Mise à jour des séries de jours consécutifs
+            # Mise à jour des séries de jours consécutifs
             self.user.update_streaks()
 
     @staticmethod
@@ -245,102 +243,3 @@ class JournalMedia(models.Model):
             raise ValidationError({'file': 'Le fichier doit être un audio.'})
 
 
-# 📎 Médias associés à une entrée de journal
-class JournalMedia(models.Model):
-    """
-    Modèle pour stocker les fichiers multimédias associés aux entrées de journal.
-    Permet aux utilisateurs d'enrichir leurs entrées avec des images ou des enregistrements audio.
-    
-    API Endpoints suggérés:
-    - POST /api/journal-entries/{id}/media/ - Ajouter un média à une entrée
-    - DELETE /api/journal-entries/media/{id}/ - Supprimer un média
-    - GET /api/journal-entries/{id}/media/ - Lister les médias d'une entrée
-    
-    Exemple de sérialisation JSON:
-    {
-        "id": 45,
-        "entry": 123,
-        "type": "image",
-        "file": "/media/journal_media/image123.jpg",
-        "created_at": "2025-04-19T15:31:12Z"
-    }
-    """
-    entry = models.ForeignKey(JournalEntry, on_delete=models.CASCADE, related_name="media")
-    file = models.FileField(upload_to="journal_media/")
-    type = models.CharField(
-        max_length=10,
-        choices=[("image", "Image"), ("audio", "Audio")]
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = "Média"
-        verbose_name_plural = "Médias"
-        ordering = ['created_at']
-        
-        """
-        Permissions API:
-        - Un utilisateur ne doit accéder qu'aux médias liés à ses propres entrées
-        - Limiter la taille des uploads
-        - Valider les types MIME des fichiers
-        """
-
-    def __str__(self):
-        return f"{self.get_type_display()} pour {self.entry}"
-        
-    def file_url(self):
-        """
-        Retourne l'URL complète du fichier.
-        
-        Returns:
-            str: URL du fichier média
-            
-        Utilisation dans l'API:
-            Ce champ doit être inclus dans la sérialisation pour faciliter
-            l'affichage direct dans l'interface.
-            
-        Exemple dans un sérialiseur:
-            @property
-            def file_url(self):
-                return self.instance.file.url if self.instance.file else None
-        """
-        if self.file:
-            return self.file.url
-        return None
-        
-    def file_size(self):
-        """
-        Retourne la taille du fichier en octets.
-        
-        Returns:
-            int: Taille du fichier en octets
-            
-        Utilisation dans l'API:
-            Utile pour l'affichage dans l'interface ou pour les quotas.
-        """
-        if self.file:
-            return self.file.size
-        return 0
-        
-    def validate_file_type(self):
-        """
-        Vérifie si le type de fichier correspond au type déclaré.
-        
-        Raises:
-            ValidationError: Si le type de fichier ne correspond pas
-            
-        Utilisation dans l'API:
-            Cette validation doit être reproduite dans le sérialiseur
-            pour assurer la cohérence des données.
-        """
-        import mimetypes
-        if not self.file:
-            return
-            
-        mime_type, _ = mimetypes.guess_type(self.file.name)
-        
-        if self.type == 'image' and not mime_type.startswith('image/'):
-            raise ValidationError({'file': 'Le fichier doit être une image.'})
-            
-        if self.type == 'audio' and not mime_type.startswith('audio/'):
-            raise ValidationError({'file': 'Le fichier doit être un audio.'})

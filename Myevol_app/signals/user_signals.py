@@ -1,35 +1,42 @@
 # signals/user_signals.py
 
+import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-import logging
-from ..models.user_model import User
-from ..services.user_service import handle_user_badges, handle_user_streak, handle_user_preferences
 
-# Initialisation du logger pour la gestion des logs
+from ..models.user_model import User
+from ..services.user_service import (
+    handle_user_preferences,
+    handle_user_badges,
+    handle_user_streak,
+)
+
 logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=User)
-def handle_user_creation(sender, instance, created, **kwargs):
+def initialize_user_after_creation(sender, instance, created, **kwargs):
     """
-    Signal appelé après la création d'un utilisateur pour :
-    - Créer ses préférences par défaut
-    - Mettre à jour ses badges
-    - Mettre à jour sa série d'entrées consécutives (streak)
-    
-    Ce signal est déclenché uniquement lors de la création d'un nouvel utilisateur.
-    """
+    Signal déclenché après la création d'un nouvel utilisateur.
+    Initialise :
+    - ses préférences par défaut,
+    - ses badges initiaux,
+    - ses streaks.
 
-    # Vérifie si l'utilisateur vient d'être créé
+    Args:
+        sender (Model): Le modèle User.
+        instance (User): L'utilisateur nouvellement créé.
+        created (bool): True si nouvel utilisateur.
+    """
     if created:
-        # Crée les préférences utilisateur par défaut
+        logger.info(f"[USER INIT] Création de {instance.username} - Initialisation du profil...")
+
+        # Préférences par défaut
         handle_user_preferences(instance)
 
-        # Met à jour les badges de l'utilisateur
+        # Attribution initiale des badges
         handle_user_badges(instance)
 
-        # Met à jour la série d'entrées consécutives de l'utilisateur
+        # Calcul initial du streak
         handle_user_streak(instance)
 
-        # Ajout d'une entrée de log pour indiquer que l'initialisation a été effectuée avec succès
-        logger.info(f"Utilisateur {instance.username} créé. Initialisation des préférences, badges et streaks.")
+        logger.info(f"[USER INIT] ✅ Profil initialisé pour {instance.username}")

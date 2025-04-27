@@ -21,7 +21,7 @@ def update_challenge_progress(progress_instance):
     challenge = progress_instance.challenge
     user = progress_instance.user
 
-    if challenge.is_completed(user):
+    if not progress_instance.completed and challenge.is_completed(user):
         progress_instance.completed = True
         progress_instance.completed_at = now()
         progress_instance.save()
@@ -60,3 +60,14 @@ def check_user_challenges(user):
 
         # Met à jour la progression de l'utilisateur
         update_challenge_progress(progress)
+
+def check_challenges(user):
+    """
+    Vérifie tous les défis actifs de l'utilisateur et met à jour leur progression.
+    Cette fonction est appelée après la création d'une entrée de journal.
+    
+    Args:
+        user (User): L'utilisateur dont les défis doivent être vérifiés
+    """
+    # Pas besoin d'importer check_user_challenges car elle est déjà dans ce module
+    return check_user_challenges(user)

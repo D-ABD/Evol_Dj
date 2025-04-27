@@ -1,9 +1,11 @@
 # services/userPreference_service.py
 import logging
 from django.shortcuts import get_object_or_404
-from ..models.userPreference_model import UserPreference
+from ..models.userPreference_model import UserPreference 
 
 logger = logging.getLogger(__name__)
+
+
 
 def create_or_update_preferences(user, preferences_data=None):
     """

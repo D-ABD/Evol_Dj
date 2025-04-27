@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 from django.contrib.messages import constants as messages
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -164,6 +165,60 @@ CELERY_BROKER_URL = "redis://localhost:6379/0"  # Assure-toi que Redis tourne
 CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Europe/Paris'
+
+from datetime import timedelta
+
+CELERY_BEAT_SCHEDULE = {
+    # 🔔 Envoyer la question "Qu'as-tu fait aujourd'hui ?" tous les jours à 19h
+    'ask_user_daily_activity': {
+        'task': 'Myevol_app.tasks.ask_user_daily_activity',
+        'schedule': crontab(hour=19, minute=0),
+    },
+
+    # 📊 Générer statistiques journalières tous les jours à minuit
+    'generate_daily_stats': {
+        'task': 'Myevol_app.tasks.generate_all_daily_stats',
+        'schedule': crontab(hour=0, minute=0),
+    },
+
+    # 📈 Générer statistiques hebdomadaires chaque lundi à 9h
+    'generate_weekly_stats': {
+        'task': 'Myevol_app.tasks.generate_all_weekly_stats',
+        'schedule': crontab(hour=9, minute=0, day_of_week=1),  # 1 = lundi
+    },
+
+    # 📅 Générer statistiques mensuelles le 1er du mois à 9h
+    'generate_monthly_stats': {
+        'task': 'Myevol_app.tasks.generate_all_monthly_stats',
+        'schedule': crontab(hour=9, minute=0, day_of_month=1),
+    },
+
+    # 🗓️ Générer statistiques annuelles le 1er janvier à 9h
+    'generate_annual_stats': {
+        'task': 'Myevol_app.tasks.generate_all_annual_stats',
+        'schedule': crontab(hour=9, minute=0, day_of_month=1, month_of_year=1),
+    },
+
+    # 🧹 Nettoyer les anciennes notifications (> 90 jours) tous les jours à 3h du matin
+    'clean_old_notifications': {
+        'task': 'Myevol_app.tasks.clean_old_notifications',
+        'schedule': crontab(hour=3, minute=0),
+    },
+
+    # 🧠 Vérifier/Recalculer les streaks tous les jours à 0h30
+    'update_user_streaks': {
+        'task': 'Myevol_app.tasks.recalculate_all_streaks',
+        'schedule': crontab(hour=0, minute=30),
+    },
+
+    # 🚨 Envoyer un rappel s’il n’y a pas eu d'entrée depuis X jours (ex: tous les jours à 18h)
+    'remind_inactive_users': {
+        'task': 'Myevol_app.tasks.remind_inactive_users',
+        'schedule': crontab(hour=18, minute=0),
+    },
+}
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -212,3 +267,4 @@ LOGGING = {
         'level': 'DEBUG',
     },
 }
+DEFAULT_ADMIN_EMAIL = "admin@monapp.com"

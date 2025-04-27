@@ -6,7 +6,6 @@ from django.db import models
 from django.utils.timezone import now
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
-from .notification_model import Notification
 from django.conf import settings
 
 User = settings.AUTH_USER_MODEL
@@ -89,28 +88,17 @@ class Objective(models.Model):
     def save(self, *args, **kwargs):
         """
         Surcharge pour mettre à jour l'état 'done' automatiquement si l'objectif est atteint.
-        Une notification est créée uniquement si l'objectif vient d'être complété.
+        La notification est désormais gérée par un signal externe.
         """
-        create_notification = kwargs.pop('create_notification', True)
         self.full_clean()  # Appelle clean()
 
-        # Log avant de sauvegarder l'objectif
         logger.info(f"Sauvegarde de l'objectif: {self.title} (État: {'Complété' if self.done else 'En cours'})")
 
-        # Détection du changement d'état
         if not self.done and self.progress() >= 100:
-            self.done = True
-
-            if create_notification:
-                # Envoi d'une notification si l'objectif est complété
-                Notification.objects.create(
-                    user=self.user,
-                    message=f"🎯 Objectif atteint : {self.title}",
-                    notif_type="objectif"
-                )
-                logger.info(f"Objectif atteint: {self.title} pour {self.user.username}")
+            self.done = True  # On le marque comme complété (notification déléguée au signal)
 
         super().save(*args, **kwargs)
+
 
     def is_due_today(self):
         """Vérifie si la date cible de l’objectif est aujourd’hui"""

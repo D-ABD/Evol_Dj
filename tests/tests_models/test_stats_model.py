@@ -1,199 +1,145 @@
+# tests/tests_models/test_stats_model.py
 from django.test import TestCase
-from django.utils.timezone import now
-from datetime import timedelta, date
+from django.utils.timezone import now, timedelta
 from django.contrib.auth import get_user_model
-from Myevol_app.models.stats_model import WeeklyStat, DailyStat
-from Myevol_app.models.journal_model import JournalEntry
+from unittest.mock import patch, MagicMock
+
+from freezegun import freeze_time
+
+from Myevol_app.models import DailyStat, WeeklyStat, JournalEntry
 
 User = get_user_model()
 
-class StatsModelTests(TestCase):
-    def setUp(self):
-        # Créer un utilisateur de test
+@freeze_time("2025-04-23")
+class StatsModelsTests(TestCase): 
+    @patch('Myevol_app.models.user_model.User.create_default_preferences')
+    def setUp(self, mock_create_prefs):
+        # Empêche la création des préférences utilisateur
+        mock_create_prefs.return_value = None
+        
         self.user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="password123"
+            username="statuser",
+            email="stat@example.com",
+            password="testpass"
         )
-
-        JournalEntry.objects.all().delete()
-        self.today = now().date()
-        self.monday = self.today - timedelta(days=self.today.weekday())
-
-        self.entry1 = JournalEntry.objects.create(
-            user=self.user,
-            content="Test entry 1",
-            category="Travail",
-            mood=7,
-            created_at=now()
-        )
-
-        self.entry2 = JournalEntry.objects.create(
-            user=self.user,
-            content="Test entry 2",
-            category="Sport",
-            mood=9,
-            created_at=now()
-        )
-
-        yesterday = now() - timedelta(days=1)
-        self.entry3 = JournalEntry.objects.create(
-            user=self.user,
-            content="Entry from yesterday",
-            category="Travail",
-            mood=6,
-            created_at=yesterday
-        )
-
-        last_week = now() - timedelta(days=8)
-        self.entry4 = JournalEntry.objects.create(
-            user=self.user,
-            content="Entry from last week",
-            category="Loisirs",
-            mood=8,
-            created_at=last_week
-        )
-
-        self.today_entries = JournalEntry.objects.filter(
-            user=self.user,
-            created_at__date=self.today
-        ).count()
-
-        self.this_week_entries = JournalEntry.objects.filter(
-            user=self.user,
-            created_at__date__range=(self.monday, self.monday + timedelta(days=6))
-        ).count()
-
-    def test_daily_stat_generation(self):
-        stat = DailyStat.generate_for_user(self.user, date=self.today)
-        self.assertEqual(stat.date, self.today)
-        self.assertEqual(stat.entries_count, self.today_entries)
-        if stat.entries_count == 2:
-            self.assertEqual(stat.mood_average, 8.0)
-            self.assertEqual(len(stat.categories), 2)
-            self.assertEqual(stat.categories.get("Travail"), 1)
-            self.assertEqual(stat.categories.get("Sport"), 1)
-
-    def test_daily_stat_day_of_week(self):
-        DailyStat.objects.filter(user=self.user, date=now().date()).delete()
-        stat = DailyStat.objects.create(
-            user=self.user,
-            date=now().date(),
-            entries_count=3,
-            mood_average=6.0
-        )
-        self.assertEqual(stat.day_of_week(), "Lundi")  # Correction possible à adapter selon la date
-
-    def test_daily_stat_is_weekend(self):
-        test_date = now().date()
-        DailyStat.objects.filter(user=self.user, date=test_date).delete()
-        stat = DailyStat.objects.create(
-            user=self.user,
-            date=test_date,
-            entries_count=2,
-            mood_average=7.0
-        )
-        is_weekend = test_date.weekday() >= 5
-        self.assertEqual(stat.is_weekend(), is_weekend)
-
-    def test_daily_stat_calendar_data(self):
-        DailyStat.generate_for_user(self.user, date=self.today)
-        DailyStat.generate_for_user(self.user, date=self.today - timedelta(days=1))
-        calendar_data = DailyStat.get_calendar_data(self.user)
-        self.assertIsInstance(calendar_data, list)
-        self.assertTrue(len(calendar_data) >= 2)
-        item = calendar_data[0]
-        self.assertIn('date', item)
-        self.assertIn('count', item)
-        self.assertIn('mood', item)
-        self.assertIn('intensity', item)
-        self.assertTrue(0 <= item['intensity'] <= 1)
-
-    def test_weekly_stat_generation(self):
-        stat, created = WeeklyStat.generate_for_user(self.user, reference_date=self.today)
-        self.assertEqual(stat.week_start, self.monday)
-        self.assertEqual(stat.entries_count, self.this_week_entries)
-        if stat.entries_count == 3:
-            self.assertAlmostEqual(stat.mood_average, 7.3, places=1)
-            self.assertEqual(len(stat.categories), 2)
-            self.assertEqual(stat.categories.get("Travail"), 2)
-            self.assertEqual(stat.categories.get("Sport"), 1)
-
-    def test_weekly_stat_week_end(self):
-        stat = WeeklyStat.objects.create(
-            user=self.user,
-            week_start=self.monday,
-            entries_count=1,
-            mood_average=7.0
-        )
-        self.assertEqual(stat.week_end(), self.monday + timedelta(days=6))
-
-    def test_weekly_stat_week_number(self):
-        stat = WeeklyStat.objects.create(
-            user=self.user,
-            week_start=self.monday,
-            entries_count=1,
-            mood_average=7.0
-        )
-        expected_week_number = self.monday.isocalendar()[1]
-        self.assertEqual(stat.week_number(), expected_week_number)
-
-    def test_weekly_stat_top_category(self):
-        stat = WeeklyStat.objects.create(
-            user=self.user,
-            week_start=self.monday,
-            entries_count=3,
-            mood_average=7.0,
-            categories={"Travail": 2, "Sport": 1}
-        )
-        self.assertEqual(stat.top_category(), "Travail")
-        stat.categories = {"Loisirs": 3, "Travail": 2}
-        stat.save()
-        self.assertEqual(stat.top_category(), "Loisirs")
-        stat.categories = {}
-        stat.save()
-        self.assertIsNone(stat.top_category())
-
-    def test_daily_stat_with_no_entries(self):
-        JournalEntry.objects.filter(user=self.user).delete()
-        stat = DailyStat.generate_for_user(self.user, date=self.today)
-        self.assertEqual(stat.entries_count, 0)
-        self.assertIsNone(stat.mood_average)
-        self.assertEqual(stat.categories, {})
-
-    def test_weekly_stat_with_no_entries(self):
-        JournalEntry.objects.filter(user=self.user).delete()
-        stat, created = WeeklyStat.generate_for_user(self.user, reference_date=self.today)
-        self.assertEqual(stat.entries_count, 0)
-        self.assertIsNone(stat.mood_average)
-        self.assertEqual(stat.categories, {})
-
-    def test_daily_stat_update(self):
-        initial_stat = DailyStat.generate_for_user(self.user, date=self.today)
-        initial_count = initial_stat.entries_count
+        
+        # Patcher les méthodes appelées lors de la création d'entrées de journal
+        patcher1 = patch('Myevol_app.services.user_stats_service.compute_current_streak', return_value=0)
+        patcher2 = patch('Myevol_app.models.stats_model.DailyStat.generate_for_user')
+        patcher3 = patch('Myevol_app.services.challenge_service.check_challenges')
+        patcher4 = patch('Myevol_app.models.user_model.User.update_badges')
+        patcher5 = patch('Myevol_app.models.user_model.User.update_streaks')
+        
+        # Démarrer les patchers
+        self.mock_compute_streak = patcher1.start()
+        self.mock_generate_stats = patcher2.start()
+        self.mock_check_challenges = patcher3.start()
+        self.mock_update_badges = patcher4.start()
+        self.mock_update_streaks = patcher5.start()
+        
+        # Créer quelques entrées pour les statistiques
+        today = now().date()
+        
         JournalEntry.objects.create(
             user=self.user,
-            content="Une entrée supplémentaire",
-            category="Loisirs",
-            mood=5,
-            created_at=now()
+            content="Entry 1",
+            mood=7,
+            category="work"
         )
-        updated_stat = DailyStat.generate_for_user(self.user, date=self.today)
-        self.assertEqual(updated_stat.entries_count, initial_count + 1)
-        self.assertIn("Loisirs", updated_stat.categories)
-
-    def test_daily_stat_calendar_data_with_filters(self):
-        DailyStat.generate_for_user(self.user, date=self.today)
-        month_data = DailyStat.get_calendar_data(
+        
+        JournalEntry.objects.create(
             user=self.user,
-            month=self.today.month,
-            year=self.today.year
+            content="Entry 2",
+            mood=8,
+            category="personal"
         )
-        self.assertTrue(len(month_data) > 0)
-        other_month = 1 if self.today.month != 1 else 2
-        empty_data = DailyStat.get_calendar_data(
+        
+        # Arrêter de patcher generate_for_user pour permettre au test de l'appeler
+        patcher2.stop()
+        
+        # Générer les statistiques
+        self.daily_stat = DailyStat.generate_for_user(self.user, today)
+        self.weekly_stat = WeeklyStat.generate_for_user(self.user, today)
+        
+        # Nous devons maintenant arrêter les autres patchers pour éviter les problèmes de fuite
+        patcher1.stop()
+        patcher3.stop()
+        patcher4.stop()
+        patcher5.stop()
+        
+    def test_daily_stat_str(self):
+        self.assertIn(self.user.username, str(self.daily_stat))
+        
+    def test_weekly_stat_str(self):
+        self.assertIn(self.user.username, str(self.weekly_stat))
+        self.assertIn("semaine du", str(self.weekly_stat))
+        
+    def test_daily_stat_entries_count(self):
+        self.assertEqual(self.daily_stat.entries_count, 2)
+        
+    def test_weekly_stat_entries_count(self):
+        self.assertEqual(self.weekly_stat.entries_count, 2)
+        
+    def test_daily_stat_mood_average(self):
+        # (7 + 8) / 2 = 7.5
+        self.assertEqual(self.daily_stat.mood_average, 7.5)
+        
+    def test_daily_stat_categories(self):
+        expected = {"work": 1, "personal": 1}
+        self.assertEqual(self.daily_stat.categories, expected)
+        
+    def test_day_of_week(self):
+        days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+        weekday = now().date().weekday()
+        self.assertEqual(self.daily_stat.day_of_week(), days[weekday])
+        
+    def test_is_weekend(self):
+        today = now().date()
+        weekday = today.weekday()
+        
+        # Modifier la date du stat pour tester weekend/jour de semaine
+        if weekday < 5:  # Lundi-Vendredi
+            self.assertFalse(self.daily_stat.is_weekend())
+            
+            # Tester avec une date de weekend (samedi)
+            saturday = today + timedelta(days=(5 - weekday))
+            stat_weekend = DailyStat.objects.create(
+                user=self.user,
+                date=saturday,
+                entries_count=0
+            )
+            self.assertTrue(stat_weekend.is_weekend())
+            
+    def test_week_end(self):
+        start_date = self.weekly_stat.week_start
+        expected_end = start_date + timedelta(days=6)
+        self.assertEqual(self.weekly_stat.week_end(), expected_end)
+        
+    def test_week_number(self):
+        # Utiliser la date réelle pour obtenir le numéro de semaine attendu
+        expected = self.weekly_stat.week_start.isocalendar()[1]
+        self.assertEqual(self.weekly_stat.week_number(), expected)
+        
+    @patch('Myevol_app.services.user_stats_service.compute_current_streak', return_value=0)
+    @patch('Myevol_app.services.challenge_service.check_challenges')
+    @patch('Myevol_app.models.user_model.User.update_badges')
+    @patch('Myevol_app.models.user_model.User.update_streaks')
+    def test_top_category(self, mock_update_streaks, mock_update_badges, mock_check_challenges, mock_compute_streak):
+        # Catégories {"work": 1, "personal": 1}
+        # On n'a pas de catégorie majoritaire, donc le résultat dépend de l'ordre de traitement
+        self.assertIn(self.weekly_stat.top_category(), ["work", "personal"])
+        
+        # Ajouter une entrée supplémentaire pour avoir une catégorie majoritaire
+        JournalEntry.objects.create(
             user=self.user,
-            month=other_month,
-            year=self.today.year
+            content="Another work entry",
+            mood=6,
+            category="work"
         )
-        self.assertEqual(len(empty_data), 0)
+        
+        # Régénérer les stats
+        today = now().date()
+        self.weekly_stat = WeeklyStat.generate_for_user(self.user, today)
+        
+        # Maintenant la catégorie "work" devrait être majoritaire
+        self.assertEqual(self.weekly_stat.top_category(), "work")

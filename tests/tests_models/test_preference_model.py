@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from Myevol_app.models.userPreference_model import UserPreference
@@ -161,25 +162,10 @@ class UserPreferenceModelTests(TestCase):
         # Tester avec un type inexistant
         self.assertFalse(self.preferences.should_send_notification('unknown_type'))
 
-    def test_create_preferences_for_user_service(self):
-        """Test du service create_preferences_for_user"""
-        from Myevol_app.services.userpreference_service import create_preferences_for_user
-        
-        # Supprimer d'abord les préférences existantes
-        self.preferences.delete()
-        
-        # Utiliser le service pour créer de nouvelles préférences
-        prefs = create_preferences_for_user(self.user)
-        
-        # Vérifier que les préférences ont été créées
-        self.assertIsNotNone(prefs)
-        self.assertEqual(prefs.user, self.user)
-        
-        # Vérifier qu'un second appel renvoie les mêmes préférences
-        prefs2 = create_preferences_for_user(self.user)
-        self.assertEqual(prefs.id, prefs2.id)  # Même instance en DB
 
-    def test_preference_persistence_after_user_changes(self):
+
+    @patch('django.db.models.signals.post_save.send')
+    def test_preference_persistence_after_user_changes(self, mock_post_save):
         """Teste que les préférences persistent après modification de l'utilisateur"""
         # Modifier les préférences
         self.preferences.dark_mode = True
@@ -217,3 +203,24 @@ class UserPreferenceModelTests(TestCase):
         # Vérifier que les autres champs ont les valeurs par défaut
         self.assertEqual(prefs.font_choice, "Roboto")
         self.assertTrue(prefs.enable_animations)
+
+    def test_create_preferences_for_user_service(self):
+        """Test du service create_or_update_preferences"""
+        from Myevol_app.services.userpreference_service import create_or_update_preferences
+
+        # Supprimer d'abord les préférences existantes
+        self.preferences.delete()
+
+        # Important : refresh l'utilisateur pour éviter des surprises liées aux relations
+        self.user.refresh_from_db()
+
+        # Utiliser le service pour créer de nouvelles préférences
+        prefs = create_or_update_preferences(self.user)
+
+        # Vérifier que les préférences ont été créées
+        self.assertIsNotNone(prefs)
+        self.assertEqual(prefs.user, self.user)
+
+        # Vérifier qu'un second appel renvoie la même instance
+        prefs2 = create_or_update_preferences(self.user)
+        self.assertEqual(prefs.id, prefs2.id)  # Même instance en base

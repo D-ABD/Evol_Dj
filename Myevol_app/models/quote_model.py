@@ -3,7 +3,7 @@
 import random
 import logging
 import hashlib
-from datetime import datetime
+import datetime
 from django.db import models
 from django.db.models import Avg, Count, Case, When, IntegerField
 from django.conf import settings
@@ -120,17 +120,3 @@ class Quote(models.Model):
 
         return list(authors)
 
-# Signaux pour logguer la création et suppression des citations
-from django.db.models.signals import post_save, post_delete
-from django.dispatch import receiver
-
-@receiver(post_save, sender=Quote)
-def log_quote_creation(sender, instance, created, **kwargs):
-    """ Log la création de chaque citation. """
-    if created:
-        logger.info(f"Nouveau quote créé : {instance.text[:50]}... — {instance.author if instance.author else 'Inconnu'}")
-
-@receiver(post_delete, sender=Quote)
-def log_quote_deletion(sender, instance, **kwargs):
-    """ Log la suppression de chaque citation. """
-    logger.info(f"Citation supprimée : {instance.text[:50]}... — {instance.author if instance.author else 'Inconnu'}")

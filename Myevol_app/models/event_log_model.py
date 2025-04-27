@@ -116,7 +116,8 @@ class EventLog(models.Model):
             severity=severity,
             metadata=metadata or None
         )
-        logger.info(f"[LOG] {user.username if user else 'System'} > {action} > {description} > Severity: {severity}")
+        username = getattr(user, 'username', 'System')
+        logger.info(f"[LOG] {username} > {action} > {description} > Severity: {severity}")
         return log
 
     @classmethod
@@ -139,3 +140,6 @@ class EventLog(models.Model):
         if user:
             qs = qs.filter(user=user)
         return dict(qs.values("action").annotate(count=Count("id")).values_list("action", "count"))
+
+    def has_metadata(self):
+        return bool(self.metadata)

@@ -7,6 +7,7 @@ from django.conf import settings
 import logging
 
 
+
 User = settings.AUTH_USER_MODEL
 logger = logging.getLogger(__name__)
 
@@ -168,6 +169,13 @@ class ChallengeProgress(models.Model):
         """
         is_new = self.pk is None
         super().save(*args, **kwargs)
+        from ..models.event_log_model import EventLog
 
-        if is_new:
-            logger.info(f"Nouvelle progression créée pour {self.user.username} sur le défi '{self.challenge.title}'")
+        if not is_new and self.completed and self.completed_at is None:
+            self.completed_at = now()
+            EventLog.log_action(
+                action="defi_termine",
+                description=f"{self.user.username} a complété le défi '{self.challenge.title}'",
+                user=self.user,
+                metadata={"challenge_id": self.challenge.id}
+            )

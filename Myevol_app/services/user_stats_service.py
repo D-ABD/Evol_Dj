@@ -1,43 +1,40 @@
-# services/user_stats_service.py
-
 from datetime import timedelta
-from django.db import models
+from collections import defaultdict
 from django.db.models import Avg, Count
 from django.utils.timezone import now
-from django.db.models.functions import TruncDate
+
 
 def compute_mood_average(entries, days=7, reference_date=None):
     """
-    Calcule la moyenne d'humeur sur les X derniers jours.
+    Calcule la moyenne d'humeur sur une période donnée.
 
     Args:
-        entries: Les entrées de journal de l'utilisateur
-        days (int): Nombre de jours à considérer
-        reference_date (date): Date de référence
+        entries (QuerySet): Les entrées de journal utilisateur
+        days (int): Nombre de jours à considérer (par défaut 7)
+        reference_date (date, optional): Date de référence (aujourd'hui par défaut)
 
     Returns:
-        float: Moyenne d'humeur arrondie à 1 décimale
+        float: Moyenne d'humeur arrondie à 1 décimale, ou None si aucune entrée
     """
-    if reference_date is None:
-        reference_date = now()
-        
-    entries = entries.filter(created_at__gte=reference_date - timedelta(days=days))
-    avg = entries.aggregate(avg=Avg('mood'))['avg']
+    reference_date = reference_date or now()
+    since = reference_date - timedelta(days=days)
+    avg = entries.filter(created_at__gte=since).aggregate(avg=Avg('mood'))['avg']
     return round(avg, 1) if avg is not None else None
 
-def compute_current_streak(entries, reference_date=None):
+
+def compute_current_streak(user, reference_date=None):
     """
     Calcule la série actuelle de jours consécutifs avec au moins une entrée.
-    
+
     Args:
-        entries: Les entrées de journal de l'utilisateur
-        reference_date (date): Date de référence
+        user (User): Utilisateur concerné
+        reference_date (date, optional): Date de référence (aujourd'hui par défaut)
 
     Returns:
-        int: Nombre de jours consécutifs avec une entrée
+        int: Nombre de jours consécutifs avec des entrées
     """
-    if reference_date is None:
-        reference_date = now().date()
+    reference_date = reference_date or now().date()
+    entries = user.entries.all()
 
     streak = 0
     for i in range(0, 365):
@@ -48,18 +45,49 @@ def compute_current_streak(entries, reference_date=None):
             break
     return streak
 
+
 def compute_entries_per_category(entries, days=None):
     """
-    Calcule la distribution des entrées par catégorie.
+    Calcule la répartition des entrées par catégorie.
 
     Args:
-        entries: Les entrées de journal de l'utilisateur
-        days (int, optional): Limite aux N derniers jours si spécifié
+        entries (QuerySet): Entrées de journal
+        days (int, optional): Limite aux N derniers jours
 
     Returns:
-        dict: Dictionnaire avec catégories comme clés et nombre d'entrées comme valeurs
+        dict: {catégorie: nombre d'entrées}
     """
     if days:
         entries = entries.filter(created_at__gte=now() - timedelta(days=days))
-    
     return dict(entries.values('category').annotate(count=Count('id')).values_list('category', 'count'))
+
+
+def compute_stats_for_period(user, start_date, end_date):
+    """
+    Calcule les statistiques entre deux dates pour un utilisateur :
+    - Nombre total d'entrées
+    - Moyenne des humeurs
+    - Répartition par catégorie
+
+    Args:
+        user (User): Utilisateur concerné
+        start_date (date): Début de la période
+        end_date (date): Fin de la période
+
+    Returns:
+        dict: Résultat des statistiques (entries_count, mood_average, categories)
+    """
+    entries = user.entries.filter(created_at__date__range=(start_date, end_date))
+    entries_count = entries.count()
+    mood_avg = entries.aggregate(avg=Avg("mood"))["avg"]
+    mood_avg = round(mood_avg, 1) if mood_avg is not None else None
+
+    categories = defaultdict(int)
+    for entry in entries:
+        categories[entry.category] += 1
+
+    return {
+        "entries_count": entries_count,
+        "mood_average": mood_avg,
+        "categories": dict(categories),
+    }

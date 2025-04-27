@@ -2,30 +2,33 @@
 
 import logging
 from django.db import IntegrityError
-from ..models.objective_model import Objective, Notification
 from django.utils.timezone import now
+from ..models.objective_model import Objective
+from ..services.notification_service import create_user_notification
 
 logger = logging.getLogger(__name__)
 
 class ObjectiveService:
     """
-    Classe de service pour gérer la logique métier associée aux objectifs utilisateurs.
+    Service métier dédié à la gestion des objectifs des utilisateurs.
+    Fournit des méthodes pour la création, la mise à jour, la complétion
+    et les statistiques d'objectifs.
     """
 
     @staticmethod
     def create_objective(user, title, category, target_date, target_value):
         """
-        Crée un nouvel objectif pour un utilisateur.
-        
+        Crée un nouvel objectif utilisateur.
+
         Args:
-            user (User): L'utilisateur qui crée l'objectif.
-            title (str): Titre de l'objectif.
-            category (str): Catégorie de l'objectif.
-            target_date (date): La date cible pour accomplir l'objectif.
-            target_value (int): La valeur à atteindre pour accomplir l'objectif.
+            user (User): Utilisateur concerné
+            title (str): Titre de l’objectif
+            category (str): Catégorie liée
+            target_date (date): Date cible d’achèvement
+            target_value (int): Valeur cible à atteindre
 
         Returns:
-            Objective: L'objectif créé.
+            Objective: L’instance créée
         """
         try:
             objective = Objective.objects.create(
@@ -35,10 +38,10 @@ class ObjectiveService:
                 target_date=target_date,
                 target_value=target_value
             )
-            logger.info(f"Objectif créé pour {user.username}: {title}")
+            logger.info(f"[OBJECTIF] Objectif créé : '{title}' pour {user.username}")
             return objective
         except IntegrityError as e:
-            logger.error(f"Erreur lors de la création de l'objectif pour {user.username}: {e}")
+            logger.error(f"[OBJECTIF] ❌ Erreur création pour {user.username} : {e}")
             raise
 
     @staticmethod
@@ -47,14 +50,14 @@ class ObjectiveService:
         Met à jour un objectif existant.
 
         Args:
-            objective (Objective): L'objectif à mettre à jour.
-            title (str, optional): Nouveau titre de l'objectif.
-            category (str, optional): Nouvelle catégorie.
-            target_date (date, optional): Nouvelle date cible.
-            target_value (int, optional): Nouvelle valeur cible.
-        
+            objective (Objective): Objectif cible
+            title (str, optional): Nouveau titre
+            category (str, optional): Nouvelle catégorie
+            target_date (date, optional): Nouvelle date
+            target_value (int, optional): Nouvelle valeur cible
+
         Returns:
-            Objective: L'objectif mis à jour.
+            Objective: Objectif mis à jour
         """
         if title:
             objective.title = title
@@ -64,51 +67,57 @@ class ObjectiveService:
             objective.target_date = target_date
         if target_value:
             objective.target_value = target_value
-        
-        objective.save(create_notification=False)  # Ne pas créer de notification lors de la mise à jour
-        logger.info(f"Objectif mis à jour pour {objective.user.username}: {objective.title}")
+
+        objective.save()
+        logger.info(f"[OBJECTIF] Objectif mis à jour : '{objective.title}' pour {objective.user.username}")
         return objective
 
     @staticmethod
     def mark_as_complete(objective):
         """
-        Marque un objectif comme complété et envoie une notification.
+        Marque un objectif comme complété (si non déjà fait),
+        et notifie l’utilisateur.
 
         Args:
-            objective (Objective): L'objectif à marquer comme complété.
-        
+            objective (Objective): Objectif à compléter
+
         Returns:
-            Objective: L'objectif mis à jour.
+            Objective: L’objectif mis à jour
         """
         if not objective.done:
             objective.done = True
-            objective.save(create_notification=True)  # Crée une notification lors de la complétion
-            logger.info(f"Objectif complété pour {objective.user.username}: {objective.title}")
+            objective.save()
+            logger.info(f"[OBJECTIF] ✅ Objectif complété : '{objective.title}' pour {objective.user.username}")
+            create_user_notification(
+                user=objective.user,
+                message=f"🎯 Objectif atteint : {objective.title}",
+                notif_type="objectif"
+            )
         return objective
 
     @staticmethod
     def get_user_objectives(user):
         """
-        Récupère tous les objectifs d'un utilisateur.
+        Retourne tous les objectifs d’un utilisateur.
 
         Args:
-            user (User): L'utilisateur concerné.
-        
+            user (User): L’utilisateur concerné
+
         Returns:
-            QuerySet: Ensemble des objectifs de l'utilisateur.
+            QuerySet: Objectifs classés par date
         """
         return Objective.objects.filter(user=user).order_by('target_date')
 
     @staticmethod
     def get_statistics(user):
         """
-        Calcule des statistiques globales pour les objectifs d'un utilisateur.
+        Calcule des statistiques globales sur les objectifs d’un utilisateur.
 
         Args:
-            user (User): L'utilisateur concerné.
+            user (User): L’utilisateur cible
 
         Returns:
-            dict: Statistiques des objectifs de l'utilisateur.
+            dict: Données agrégées sur les objectifs
         """
         objectives = Objective.objects.filter(user=user)
         total = objectives.count()
@@ -117,7 +126,7 @@ class ObjectiveService:
 
         completion_rate = (completed / total * 100) if total > 0 else 0
 
-        logger.info(f"Statistiques des objectifs pour {user.username}: Total: {total}, Complétés: {completed}, Taux de complétion: {completion_rate}%")
+        logger.info(f"[OBJECTIF] Stats pour {user.username} : {completed}/{total} terminés")
         return {
             'total': total,
             'completed': completed,
