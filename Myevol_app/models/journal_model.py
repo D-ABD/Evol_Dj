@@ -49,7 +49,7 @@ class JournalEntry(models.Model):
         help_text="La note d'humeur (de 1 à 10) associée à cette entrée"
     )
     category = models.CharField(max_length=100, verbose_name="Catégorie", help_text="La catégorie de l'entrée (ex : Travail, Santé)")
-    created_at = models.DateTimeField(auto_now_add=True, help_text="Date et heure de création de l’entrée")
+    created_at = models.DateTimeField(default=now, help_text="Date et heure de création de l’entrée")
     updated_at = models.DateTimeField(auto_now=True, help_text="Date et heure de la dernière mise à jour")
 
     class Meta:
@@ -69,6 +69,10 @@ class JournalEntry(models.Model):
         Retourne une représentation plus lisible de l'entrée de journal.
         """
         return f"<JournalEntry id={self.id} user='{self.user.username}' category='{self.category}' mood='{self.mood}'>"
+
+    @property
+    def created_day(self):
+        return self.created_at.date()
 
     def get_absolute_url(self):
         """
