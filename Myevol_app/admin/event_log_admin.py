@@ -1,66 +1,37 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from django.db.models import Count, Avg
-from django.urls import reverse
-from django.utils.timezone import now
-from django.utils.safestring import mark_safe
 
-# Import de tous les modèles
-from ..models import (
-    Badge,
-    BadgeTemplate,
-    Challenge,
-    ChallengeProgress,
-    EventLog,
-    JournalEntry,
-    JournalMedia,
-    Notification,
-    Objective,
-    Quote,
-    DailyStat,
-    WeeklyStat,
-    User,
-    UserPreference
-)
+from ..models.event_log_model import EventLog
 
-
-# ===== 📝 Gestion des logs d'événements =====
 @admin.register(EventLog)
 class EventLogAdmin(admin.ModelAdmin):
-    list_display = ('created_at', 'user_link', 'action', 'description_preview', 'has_metadata')
-    list_filter = ('action', 'created_at')
-    search_fields = ('user__username', 'user__email', 'action', 'description')
+    list_display = ('created_at', 'user_display', 'action', 'severity_display', 'metadata_preview')
+    list_filter = ('severity', 'created_at')
+    search_fields = ('action', 'description', 'user__username')
     date_hierarchy = 'created_at'
-    readonly_fields = ('created_at', 'user', 'action', 'description', 'metadata_formatted')
-    
-    def user_link(self, obj):
-        """Affiche un lien vers l'admin de l'utilisateur"""
+    ordering = ('-created_at',)
+
+    def user_display(self, obj):
+        """Affiche l'utilisateur ou 'Système'."""
         if obj.user:
-            url = reverse("admin:auth_user_change", args=[obj.user.id])
-            return format_html('<a href="{}">{}</a>', url, obj.user.username)
-        return "-"
-    user_link.short_description = "Utilisateur"
-    
-    def description_preview(self, obj):
-        """Affiche un aperçu de la description"""
-        if len(obj.description) > 50:
-            return f"{obj.description[:50]}..."
-        return obj.description
-    description_preview.short_description = "Description"
-    
-    def has_metadata(self, obj):
-        """Indique si le log contient des métadonnées"""
-        return obj.metadata is not None and bool(obj.metadata)
-    has_metadata.boolean = True
-    has_metadata.short_description = "Métadonnées"
-    
-    def metadata_formatted(self, obj):
-        """Affiche les métadonnées formatées en JSON"""
-        if not obj.metadata:
-            return "-"
-        import json
-        return format_html('<pre>{}</pre>', json.dumps(obj.metadata, indent=2))
-    metadata_formatted.short_description = "Métadonnées"
+            return obj.user.username
+        return format_html('<i>Système</i>')
+    user_display.short_description = "Utilisateur"
 
+    def severity_display(self, obj):
+        """Couleur selon la gravité."""
+        color = {
+            'INFO': 'blue',
+            'WARN': 'orange',
+            'ERROR': 'red',
+            'CRITICAL': 'darkred'
+        }.get(obj.severity, 'black')
+        return format_html('<strong style="color:{};">{}</strong>', color, obj.get_severity_display())
+    severity_display.short_description = "Gravité"
 
-
+    def metadata_preview(self, obj):
+        """Montre rapidement s'il y a des métadonnées."""
+        if obj.metadata:
+            return format_html('<span style="color:green;">✔ Oui</span>')
+        return format_html('<span style="color:gray;">✖ Non</span>')
+    metadata_preview.short_description = "Métadonnées"

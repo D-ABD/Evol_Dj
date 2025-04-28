@@ -1,5 +1,5 @@
 git add .
-git commit -m " refonte des models, signaux et services + all tests ok (148 tests)"
+git commit -m " ajout des dichiers admin"
 git push origin main
 
 

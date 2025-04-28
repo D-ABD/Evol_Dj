@@ -43,6 +43,7 @@ class Notification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, help_text="Date de création de la notification")
     archived = models.BooleanField(default=False, help_text="Indique si la notification a été archivée")
     scheduled_at = models.DateTimeField(null=True, blank=True, help_text="Date programmée pour afficher la notification")
+    temporary_field = models.BooleanField(default=False)  # TEMPORAIRE
 
     class Meta:
         ordering = ['-created_at']

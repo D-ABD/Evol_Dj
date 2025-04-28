@@ -250,10 +250,26 @@ SIMPLE_JWT = {
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'MyEvol API',
-    'DESCRIPTION': 'Documentation complète de l’API MyEvol pour l’application mobile.',
+    'DESCRIPTION': "Documentation complète de l'API MyEvol pour l'application mobile et web.",
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+
+    # Ajouts recommandés
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': r'/api/v[0-9]',
+    'CONTACT': {'name': 'Équipe MyEvol', 'email': 'support@myevol.app'},
+    'LICENSE': {'name': 'Propriétaire'},
+    'TAGS': [
+        {'name': 'Journal', 'description': 'Entrées de journal et médias associés'},
+        {'name': 'Objectifs', 'description': 'Objectifs personnels à atteindre'},
+        {'name': 'Badges', 'description': 'Système de récompenses et de progression'},
+        {'name': 'Statistiques', 'description': 'Analyses de données et tendances'},
+        {'name': 'Utilisateurs', 'description': 'Gestion des comptes et préférences'},
+        {'name': 'Notifications', 'description': 'Système de notifications'},
+        {'name': 'Challenges', 'description': 'Défis et compétitions'},
+    ],
 }
+
 
 LOGGING = {
     'version': 1,
