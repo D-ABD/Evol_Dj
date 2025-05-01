@@ -4,22 +4,32 @@ from django.db.models import Avg, Count
 from django.utils.timezone import now
 
 
-def compute_mood_average(entries, days=7, reference_date=None):
+def compute_mood_average(user, days=7, category=None, reference_date=None):
     """
-    Calcule la moyenne d'humeur sur une période donnée.
+    Calcule la moyenne d'humeur d'un utilisateur sur une période donnée.
 
     Args:
-        entries (QuerySet): Les entrées de journal utilisateur
-        days (int): Nombre de jours à considérer (par défaut 7)
-        reference_date (date, optional): Date de référence (aujourd'hui par défaut)
+        user (User): L'utilisateur concerné.
+        days (int or None): Nombre de jours à considérer. Si None, prend toutes les entrées.
+        category (str, optional): Catégorie à filtrer.
+        reference_date (datetime, optional): Date de référence (par défaut : maintenant).
 
     Returns:
-        float: Moyenne d'humeur arrondie à 1 décimale, ou None si aucune entrée
+        float or None: Moyenne d'humeur arrondie à 1 décimale, ou None si aucune entrée.
     """
     reference_date = reference_date or now()
-    since = reference_date - timedelta(days=days)
-    avg = entries.filter(created_at__gte=since).aggregate(avg=Avg('mood'))['avg']
+    entries = user.entries.all()
+
+    if days is not None:
+        since = reference_date - timedelta(days=days)
+        entries = entries.filter(created_at__gte=since)
+
+    if category:
+        entries = entries.filter(category=category)
+
+    avg = entries.aggregate(avg=Avg('mood'))['avg']
     return round(avg, 1) if avg is not None else None
+
 
 
 def compute_current_streak(user, reference_date=None):

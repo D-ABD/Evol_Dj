@@ -329,33 +329,44 @@ class UserPreferencesSerializer(serializers.Serializer):
     
     def to_representation(self, instance):
         """
-        Récupère les préférences de l'utilisateur.
+        Récupère les préférences de l'utilisateur ou retourne des valeurs par défaut si elles sont absentes.
         """
-        # Si instance est un User
-        if hasattr(instance, 'userpreferences'):
-            prefs = instance.userpreferences
+        prefs = getattr(instance, 'userpreferences', None)
+        if prefs is None:
             return {
-                'dark_mode': prefs.dark_mode,
-                'accent_color': prefs.accent_color,
-                'font_choice': prefs.font_choice,
-                'enable_animations': prefs.enable_animations,
-                'notif_badge': prefs.notif_badge,
-                'notif_objectif': prefs.notif_objectif,
-                'notif_info': prefs.notif_info,
-                'notif_statistique': prefs.notif_statistique
+                'dark_mode': False,
+                'accent_color': "#6C63FF",
+                'font_choice': "Roboto",
+                'enable_animations': True,
+                'notif_badge': True,
+                'notif_objectif': True,
+                'notif_info': True,
+                'notif_statistique': True
             }
         
-        # Si instance est déjà un dict de préférences
-        return instance
+        return {
+            'dark_mode': prefs.dark_mode,
+            'accent_color': prefs.accent_color,
+            'font_choice': prefs.font_choice,
+            'enable_animations': prefs.enable_animations,
+            'notif_badge': prefs.notif_badge,
+            'notif_objectif': prefs.notif_objectif,
+            'notif_info': prefs.notif_info,
+            'notif_statistique': prefs.notif_statistique
+        }
+
     
     def update(self, instance, validated_data):
         """
         Mise à jour des préférences de l'utilisateur.
         """
         from ..services.userpreference_service import create_or_update_preferences
-        user = instance
-        return create_or_update_preferences(user, validated_data)
 
+        updated_prefs = create_or_update_preferences(instance, validated_data)
+
+        # Recharge les préférences à jour sur l'utilisateur pour que to_representation fonctionne correctement
+        instance.userpreferences = updated_prefs
+        return instance
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """

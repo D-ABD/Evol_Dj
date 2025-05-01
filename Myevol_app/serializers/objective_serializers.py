@@ -28,14 +28,16 @@ class ObjectiveSerializer(serializers.ModelSerializer):
     class Meta:
         model = Objective
         fields = [
-            'id', 'user', 'user_username', 'title', 'category', 'done',
+            'id', 'user_username', 'title', 'category', 'done',
             'target_date', 'target_value', 'created_at',
             'progress_percent', 'days_remaining', 'is_overdue',
             'is_achieved', 'is_due_today', 'entries_done', 'status'
         ]
-        read_only_fields = ['created_at', 'progress_percent', 'days_remaining', 
-                           'is_overdue', 'is_achieved', 'is_due_today', 'entries_done', 'status']
-    
+        read_only_fields = [
+            'created_at', 'progress_percent', 'days_remaining',
+            'is_overdue', 'is_achieved', 'is_due_today', 'entries_done', 'status'
+        ]
+        
     def get_days_remaining(self, obj):
         """Retourne le nombre de jours restants avant la date cible."""
         return obj.days_remaining()
@@ -80,11 +82,7 @@ class ObjectiveSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("La date cible ne peut pas être dans le passé.")
         return value
     
-    def create(self, validated_data):
-        """Création d'un objectif avec l'utilisateur courant."""
-        request = self.context.get('request')
-        validated_data['user'] = request.user
-        return super().create(validated_data)
+
 
 
 class ObjectiveListSerializer(ObjectiveSerializer):

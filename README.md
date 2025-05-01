@@ -1,5 +1,5 @@
 git add .
-git commit -m " ajout des dichiers admin"
+git commit -m " ajout viewset/documentation/"
 git push origin main
 
 

@@ -224,9 +224,12 @@ class UserServiceTests(TestCase):
 # User Stats Service
 class UserStatsServiceTests(TestCase):
     def test_compute_mood_average_and_streak(self):
-        entries = MagicMock()
-        entries.filter.return_value.aggregate.return_value = {'avg': 6.0}
-        self.assertEqual(user_stats_service.compute_mood_average(entries, days=7), 6.0)
+        user = MagicMock()
+        user.entries.all.return_value.filter.return_value.aggregate.return_value = {'avg': 6.0}
+
+        result = user_stats_service.compute_mood_average(user, days=7)
+
+        self.assertEqual(result, 6.0)
 
 # User Preference Service
 class UserPreferenceServiceTests(TestCase):

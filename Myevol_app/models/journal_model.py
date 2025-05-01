@@ -8,6 +8,7 @@ from django.utils.timezone import now
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.core.exceptions import ValidationError
 
 
 # Logger importé pour la journalisation
@@ -246,4 +247,7 @@ class JournalMedia(models.Model):
         if self.type == 'audio' and not mime_type.startswith('audio/'):
             raise ValidationError({'file': 'Le fichier doit être un audio.'})
 
+    def clean(self):
+        """Appelle la validation du type de fichier."""
+        self.validate_file_type()
 

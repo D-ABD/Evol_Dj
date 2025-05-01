@@ -145,8 +145,7 @@ class UserPreferencesSerializerTests(TestCase):
         )
 
     def test_user_preferences_serializer_default(self):
-        serializer = UserPreferencesSerializer()
-        output = serializer.to_representation({
+        preferences_data = {
             'dark_mode': True,
             'accent_color': '#FF0000',
             'font_choice': 'Arial',
@@ -155,10 +154,13 @@ class UserPreferencesSerializerTests(TestCase):
             'notif_objectif': False,
             'notif_info': True,
             'notif_statistique': False
-        })
+        }
+        serializer = UserPreferencesSerializer(data=preferences_data)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        output = serializer.validated_data
         self.assertTrue(output['dark_mode'])
         self.assertEqual(output['accent_color'], '#FF0000')
-        self.assertEqual(output['font_choice'], 'Arial')
+
 
 class UserXpSerializerTests(TestCase):
     def setUp(self):

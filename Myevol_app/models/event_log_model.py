@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.conf import settings
 from django.db.models import Count
 import logging
+from django.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 User = settings.AUTH_USER_MODEL
@@ -143,3 +144,7 @@ class EventLog(models.Model):
 
     def has_metadata(self):
         return bool(self.metadata)
+    def clean(self):
+        """Validation renforcée pour garantir la cohérence du champ severity."""
+        if self.severity not in dict(self.SEVERITY_CHOICES):
+            raise ValidationError({'severity': f"Invalid severity: {self.severity}"})

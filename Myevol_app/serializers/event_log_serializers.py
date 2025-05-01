@@ -26,7 +26,17 @@ class EventLogSerializer(serializers.ModelSerializer):
             'id', 'user', 'user_username', 'user_id', 'action', 'description',
             'created_at', 'metadata', 'severity', 'temps_écoulé', 'résumé'
         ]
-        read_only_fields = ['created_at', 'temps_écoulé', 'résumé']
+        read_only_fields = ['id', 'created_at', 'temps_écoulé', 'résumé']
+        
+    def validate_severity(self, value):
+        """
+        Valide que la sévérité est conforme aux choix disponibles.
+        """
+        valid_severities = dict(EventLog.SEVERITY_CHOICES).keys()
+        if value not in valid_severities:
+            raise serializers.ValidationError(f"Sévérité invalide : {value}. Doit être dans {list(valid_severities)}.")
+        return value
+        
     
     def get_temps_écoulé(self, obj):
         """

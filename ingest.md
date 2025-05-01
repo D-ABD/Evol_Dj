@@ -1,3 +1,268 @@
+(Files content cropped to 300k characters, download full ingest to see more)
+================================================
+FILE: README.md
+================================================
+git add .
+git commit -m " ajout des dichiers admin"
+git push origin main
+
+
+# Evol_Dj
+# 📘 MyEvol
+
+**MyEvol** est une application web Django de développement personnel. Elle permet de suivre son humeur au quotidien, définir des objectifs, débloquer des badges de progression et visualiser ses statistiques sous forme de graphiques.
+
+---
+
+## 🚀 Fonctionnalités principales
+
+- ✍️ Écriture d’entrées de **journal** avec humeur et catégorie
+- 🎯 Suivi des **objectifs personnels**
+- 📊 Visualisation de **statistiques** (humeur, objectifs, catégories)
+- 🏅 **Badges** de progression et niveaux à débloquer
+- 🔔 **Notifications** automatiques lors du déblocage d’un badge
+- 📈 Graphiques (Chart.js) intégrés au dashboard
+- 👤 Authentification utilisateur (inscription, connexion, déconnexion)
+
+---
+
+## 🛠️ Tech Stack
+
+- **Backend** : Django 4.2
+- **Base de données** : SQLite (ou PostgreSQL)
+- **Frontend** : HTML + Bootstrap 5 + Chart.js
+- **Auth** : Django User Model personnalisé
+
+---
+
+## 📸 Aperçus
+
+> _Exemples d’écrans à venir_  
+> Tu peux ajouter ici des screenshots de ton dashboard, journal, ou badges.
+
+---
+
+## 📂 Structure du projet
+
+Myevol_project/ ├── Myevol_app/ │ ├── models.py │ ├── views.py │ ├── forms.py │ ├── urls.py │ ├── templates/myevol/ │ ├── static/ │ └── utils/ ├── templates/base.html ├── manage.py └── requirements.txt
+
+
+---
+
+## ⚙️ Installation locale
+
+Cloner le projet :
+    git clone https://github.com/ton-user/my-evol.git
+    cd my-evol
+
+Activer environnement virtuel : 
+    python3 -m venv env
+    source env/bin/activate  # sous Linux/Mac
+    env\Scripts\activate     # sous Windows
+
+
+Installer les dépendances :
+    pip install -r requirements.txt
+
+Appliquer les migrations :
+    python3 manage.py makemigrations
+    python3 manage.py migrate
+
+Lancer le serveur :    
+    python3 manage.py runserver
+
+Créer un super utilisateur (admin) :
+    python3 manage.py createsuperuser
+
+✅ TODO (roadmap)
+    Journal quotidien
+    Objectifs personnels
+    Notifications et badges
+    Dashboard avec stats et graphiques
+    Export PDF / Excel
+    Version mobile
+    PWA ou version native via React Native 
+
+🧠 Développé avec ❤️ par @Adserv    
+# Evol_Dj
+
+
+
+Ajout de fonctionnalités:
+
+Système de partage/compétition entre utilisateurs
+Intégration avec d'autres applications de santé/fitness
+AJout un tchat et un forum
+🔔 Ajouter une notification "programmée" à afficher plus tard (scheduled_at) ?
+
+📩 Activer une notification email ou push pour les notifications importantes ?
+
+Ajoute une méthode __repr__ dans les modèles principaux (utile pour debug shell, admin ou tests).
+
+help_text dans les champs des modèles : pratique pour l’interface d’admin ou les formulaires auto-générés.
+
+Tests automatiques : si ce n’est pas encore fait, je peux t’aider à écrire des tests unitaires (TestCase) pour chaque modèle.
+
+Méthode get_absolute_url : utile si tu as des vues DetailView (ou dans l’admin, par exemple).
+
+Badge "7 jours d'activité"
+
+Ce badge est attribué ici mais n'est pas défini dans BadgeTemplate.check_unlock(). Tu peux :
+
+L’ajouter dans BadgeTemplate + dans la méthode check_unlock()
+
+Ou le garder ici comme badge "hors système", à toi de choisir
+
+Unicité des signaux :
+
+Tu as deux signaux @receiver(post_save, sender=Notification) ➜ tu pourrais les fusionner :
+award_badge() vs Badge.save()
+
+Tu as un léger chevauchement : award_badge() crée une notification, mais Badge.save() aussi ➜ tu pourrais soit :
+
+Supprimer la notification dans award_badge() (et laisser save() s’en charger)
+
+Ou désactiver la création auto dans save() si l’appel vient de award_badge()
+
+Ou ajouter un flag skip_notification=False dans Badge.save() si besoin
+
+Assure-toi que ces données sont bien importées dans la base via un loaddata, un script ou dans une tâche initial_setup avec BadgeTemplate.objects.get_or_create(...).
+
+Évite les doublons name dans cette liste, sinon Django lèvera une erreur d’unicité (ce qui n’est pas le cas ici).
+
+Pour que cela fonctionne avec Celery Beat
+Il te manque juste l’enregistrement de la tâche planifiée dans l’admin Django, ou via un script comme :
+
+Exemple avec django_celery_beat :
+bash
+Copier
+Modifier
+python manage.py shell
+python
+Copier
+Modifier
+from django_celery_beat.models import PeriodicTask, IntervalSchedule
+
+# Toutes les 10 minutes par exemple
+schedule, _ = IntervalSchedule.objects.get_or_create(every=10, period=IntervalSchedule.MINUTES)
+
+PeriodicTask.objects.get_or_create(
+    interval=schedule,
+    name='Envoyer les notifications programmées',
+    task='myevol_app.tasks.send_scheduled_notifications',
+)
+Remplace "myevol_app.tasks..." par le chemin exact vers ton fichier contenant la tâche.
+
+✅ Tu peux aller plus loin ensuite :
+Ajouter un envoi réel (mail, push, etc.)
+
+Filtrer par notif_type
+
+Logger plus finement les erreurs
+
+Ajouter les loggs aux models
+
+
+MAJ des model/tests/ok
+
+enrichi avec :
+
+pour tous les prochains, je souhaite que tu e propose des améliorations et les apppliquent
+aprés, que tu mettes à jour avec tes conseils en plus de :  
+✅ __repr__
+✅ get_absolute_url()
+✅ help_text sur tous les champs
+loggs (import loggin...)
+docstrings complet pour que le dev cree les api plus tard
+au besoin, cree les services, signals...logique metier...
+--------------------------------------------------
+--------------------------------------------------
+--------------------------------------------------
+t’ajoute un logger bien structuré
+ Pour que ta doc soit vraiment complète :
+1. Ajoute des @extend_schema sur les vues / viewsets
+Pour que Swagger affiche :
+
+Les params d’entrée (query, body…)
+
+Les réponses (200, 400, 403…)
+
+Les descriptions des endpoints
+
+python
+Copier
+Modifier
+from drf_spectacular.utils import extend_schema
+
+@extend_schema(
+    summary="Liste des objectifs de l'utilisateur",
+    description="Renvoie tous les objectifs actifs de l'utilisateur connecté.",
+    responses={200: ObjectiveSerializer(many=True)}
+)
+def list(self, request):
+    ...
+2. Ajoute des AutoSchema ou get_schema_fields() pour les vues basées sur APIView
+Si tu utilises APIView au lieu de ViewSet, tu peux aussi ajouter :
+
+python
+Copier
+Modifier
+from drf_spectacular.utils import OpenApiParameter
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(name='start_date', required=False, type=str, location=OpenApiParameter.QUERY),
+        OpenApiParameter(name='end_date', required=False, type=str, location=OpenApiParameter.QUERY),
+    ]
+)
+3. Ajoute des descriptions aux champs personnalisés avec @extend_schema_field si besoin
+Exemple :
+
+python
+Copier
+Modifier
+from drf_spectacular.utils import extend_schema_field
+
+@extend_schema_field(serializers.CharField(help_text="Nom complet de l'utilisateur."))
+def get_full_name(self, obj):
+    return obj.get_full_name()
+🔗 Exemple final : /api/docs
+Après tout ça, ta doc sera :
+
+✨ Interactive (essai de requêtes en direct)
+
+🧠 Descriptive (pour chaque champ et paramètre)
+
+🧱 Structurée (chaque endpoint clair, groupé par modèle ou vue)
+
+🔒 Sécurisée (affiche les permissions requises automatiquement si configurées)
+
+
+
+
+================================================
+FILE: asgi.py
+================================================
+# Evol_dj/asgi.py
+import os
+import django
+from channels.routing import get_default_application
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Evol_dj.settings")
+django.setup()
+application = get_default_application()
+
+
+
+================================================
+FILE: data_backup.json
+================================================
+[{"model": "auth.permission", "pk": 1, "fields": {"name": "Can add log entry", "content_type": 1, "codename": "add_logentry"}}, {"model": "auth.permission", "pk": 2, "fields": {"name": "Can change log entry", "content_type": 1, "codename": "change_logentry"}}, {"model": "auth.permission", "pk": 3, "fields": {"name": "Can delete log entry", "content_type": 1, "codename": "delete_logentry"}}, {"model": "auth.permission", "pk": 4, "fields": {"name": "Can view log entry", "content_type": 1, "codename": "view_logentry"}}, {"model": "auth.permission", "pk": 5, "fields": {"name": "Can add permission", "content_type": 2, "codename": "add_permission"}}, {"model": "auth.permission", "pk": 6, "fields": {"name": "Can change permission", "content_type": 2, "codename": "change_permission"}}, {"model": "auth.permission", "pk": 7, "fields": {"name": "Can delete permission", "content_type": 2, "codename": "delete_permission"}}, {"model": "auth.permission", "pk": 8, "fields": {"name": "Can view permission", "content_type": 2, "codename": "view_permission"}}, {"model": "auth.permission", "pk": 9, "fields": {"name": "Can add group", "content_type": 3, "codename": "add_group"}}, {"model": "auth.permission", "pk": 10, "fields": {"name": "Can change group", "content_type": 3, "codename": "change_group"}}, {"model": "auth.permission", "pk": 11, "fields": {"name": "Can delete group", "content_type": 3, "codename": "delete_group"}}, {"model": "auth.permission", "pk": 12, "fields": {"name": "Can view group", "content_type": 3, "codename": "view_group"}}, {"model": "auth.permission", "pk": 13, "fields": {"name": "Can add content type", "content_type": 4, "codename": "add_contenttype"}}, {"model": "auth.permission", "pk": 14, "fields": {"name": "Can change content type", "content_type": 4, "codename": "change_contenttype"}}, {"model": "auth.permission", "pk": 15, "fields": {"name": "Can delete content type", "content_type": 4, "codename": "delete_contenttype"}}, {"model": "auth.permission", "pk": 16, "fields": {"name": "Can view content type", "content_type": 4, "codename": "view_contenttype"}}, {"model": "auth.permission", "pk": 17, "fields": {"name": "Can add session", "content_type": 5, "codename": "add_session"}}, {"model": "auth.permission", "pk": 18, "fields": {"name": "Can change session", "content_type": 5, "codename": "change_session"}}, {"model": "auth.permission", "pk": 19, "fields": {"name": "Can delete session", "content_type": 5, "codename": "delete_session"}}, {"model": "auth.permission", "pk": 20, "fields": {"name": "Can view session", "content_type": 5, "codename": "view_session"}}, {"model": "auth.permission", "pk": 21, "fields": {"name": "Can add user", "content_type": 6, "codename": "add_user"}}, {"model": "auth.permission", "pk": 22, "fields": {"name": "Can change user", "content_type": 6, "codename": "change_user"}}, {"model": "auth.permission", "pk": 23, "fields": {"name": "Can delete user", "content_type": 6, "codename": "delete_user"}}, {"model": "auth.permission", "pk": 24, "fields": {"name": "Can view user", "content_type": 6, "codename": "view_user"}}, {"model": "auth.permission", "pk": 25, "fields": {"name": "Can add objective", "content_type": 7, "codename": "add_objective"}}, {"model": "auth.permission", "pk": 26, "fields": {"name": "Can change objective", "content_type": 7, "codename": "change_objective"}}, {"model": "auth.permission", "pk": 27, "fields": {"name": "Can delete objective", "content_type": 7, "codename": "delete_objective"}}, {"model": "auth.permission", "pk": 28, "fields": {"name": "Can view objective", "content_type": 7, "codename": "view_objective"}}, {"model": "auth.permission", "pk": 29, "fields": {"name": "Can add journal entry", "content_type": 8, "codename": "add_journalentry"}}, {"model": "auth.permission", "pk": 30, "fields": {"name": "Can change journal entry", "content_type": 8, "codename": "change_journalentry"}}, {"model": "auth.permission", "pk": 31, "fields": {"name": "Can delete journal entry", "content_type": 8, "codename": "delete_journalentry"}}, {"model": "auth.permission", "pk": 32, "fields": {"name": "Can view journal entry", "content_type": 8, "codename": "view_journalentry"}}, {"model": "auth.permission", "pk": 33, "fields": {"name": "Can add badge template", "content_type": 9, "codename": "add_badgetemplate"}}, {"model": "auth.permission", "pk": 34, "fields": {"name": "Can change badge template", "content_type": 9, "codename": "change_badgetemplate"}}, {"model": "auth.permission", "pk": 35, "fields": {"name": "Can delete badge template", "content_type": 9, "codename": "delete_badgetemplate"}}, {"model": "auth.permission", "pk": 36, "fields": {"name": "Can view badge template", "content_type": 9, "codename": "view_badgetemplate"}}, {"model": "auth.permission", "pk": 37, "fields": {"name": "Can add badge", "content_type": 10, "codename": "add_badge"}}, {"model": "auth.permission", "pk": 38, "fields": {"name": "Can change badge", "content_type": 10, "codename": "change_badge"}}, {"model": "auth.permission", "pk": 39, "fields": {"name": "Can delete badge", "content_type": 10, "codename": "delete_badge"}}, {"model": "auth.permission", "pk": 40, "fields": {"name": "Can view badge", "content_type": 10, "codename": "view_badge"}}, {"model": "auth.permission", "pk": 41, "fields": {"name": "Can add notification", "content_type": 11, "codename": "add_notification"}}, {"model": "auth.permission", "pk": 42, "fields": {"name": "Can change notification", "content_type": 11, "codename": "change_notification"}}, {"model": "auth.permission", "pk": 43, "fields": {"name": "Can delete notification", "content_type": 11, "codename": "delete_notification"}}, {"model": "auth.permission", "pk": 44, "fields": {"name": "Can view notification", "content_type": 11, "codename": "view_notification"}}, {"model": "contenttypes.contenttype", "pk": 1, "fields": {"app_label": "admin", "model": "logentry"}}, {"model": "contenttypes.contenttype", "pk": 2, "fields": {"app_label": "auth", "model": "permission"}}, {"model": "contenttypes.contenttype", "pk": 3, "fields": {"app_label": "auth", "model": "group"}}, {"model": "contenttypes.contenttype", "pk": 4, "fields": {"app_label": "contenttypes", "model": "contenttype"}}, {"model": "contenttypes.contenttype", "pk": 5, "fields": {"app_label": "sessions", "model": "session"}}, {"model": "contenttypes.contenttype", "pk": 6, "fields": {"app_label": "Myevol_app", "model": "user"}}, {"model": "contenttypes.contenttype", "pk": 7, "fields": {"app_label": "Myevol_app", "model": "objective"}}, {"model": "contenttypes.contenttype", "pk": 8, "fields": {"app_label": "Myevol_app", "model": "journalentry"}}, {"model": "contenttypes.contenttype", "pk": 9, "fields": {"app_label": "Myevol_app", "model": "badgetemplate"}}, {"model": "contenttypes.contenttype", "pk": 10, "fields": {"app_label": "Myevol_app", "model": "badge"}}, {"model": "contenttypes.contenttype", "pk": 11, "fields": {"app_label": "Myevol_app", "model": "notification"}}, {"model": "sessions.session", "pk": "7go2ji89957ey1wg8qa9obnaqzuf8sd9", "fields": {"session_data": ".eJxVjEEOwiAQRe_C2pAMDIW6dO8ZyDADUjU0Ke3KeHdt0oVu_3vvv1Skba1x63mJk6izAnX63RLxI7cdyJ3abdY8t3WZkt4VfdCur7Pk5-Vw_w4q9fqtLSRmg4mSBPQDgAuOHAUPZMV5YvAEJRkraPLIWEK2kv0wWiRbENX7A-gqN_g:1u2yQh:wJxroG6fi3TKHbWu0w3xGHeUXg9ZbAq4k47ql3HnpNg", "expire_date": "2025-04-24T20:23:19.742Z"}}, {"model": "Myevol_app.user", "pk": 1, "fields": {"password": "pbkdf2_sha256$600000$bdbVEKYnxOKDGQb9Syt10a$xi4fAp1H1ePVTJSzMcnOUP3GA71vMMRe7ADGkFHWZnM=", "last_login": "2025-04-10T20:23:19.739Z", "is_superuser": true, "username": "ABD", "first_name": "", "last_name": "", "is_staff": true, "is_active": true, "date_joined": "2025-04-10T19:19:21.971Z", "email": "abdouldiatta@gmail.com", "groups": [], "user_permissions": []}}, {"model": "Myevol_app.journalentry", "pk": 1, "fields": {"user": 1, "content": "azerty", "mood": 6, "category": "rest", "created_at": "2025-04-11T21:03:08.679Z"}}, {"model": "Myevol_app.badge", "pk": 1, "fields": {"name": "Première entrée", "description": "Bravo pour ta première entrée 🎉", "icon": "🌱", "user": 1, "date_obtenue": "2025-04-11"}}, {"model": "Myevol_app.badge", "pk": 2, "fields": {"name": "Niveau 1", "description": "Tu as atteint le niveau 1 💪", "icon": "🏆", "user": 1, "date_obtenue": "2025-04-11"}}, {"model": "Myevol_app.badgetemplate", "pk": 1, "fields": {"name": "Première entrée", "description": "Bravo pour ta première entrée 🎉", "icon": "🌱", "condition": "Créer une première entrée de journal"}}, {"model": "Myevol_app.badgetemplate", "pk": 2, "fields": {"name": "7 jours d'activité", "description": "1 semaine d'activité, continue comme ça 🚀", "icon": "🔥", "condition": "Ajouter au moins 1 entrée par jour pendant 7 jours"}}, {"model": "Myevol_app.badgetemplate", "pk": 3, "fields": {"name": "Niveau 1", "description": "Tu as atteint le niveau 1 💪", "icon": "🏆", "condition": "Atteindre le niveau 1 (1 entrée)"}}, {"model": "Myevol_app.badgetemplate", "pk": 4, "fields": {"name": "Niveau 2", "description": "Tu as atteint le niveau 2 💪", "icon": "🏆", "condition": "Atteindre le niveau 2 (5 entrées)"}}, {"model": "Myevol_app.badgetemplate", "pk": 5, "fields": {"name": "Niveau 3", "description": "Tu as atteint le niveau 3 💪", "icon": "🏆", "condition": "Atteindre le niveau 3 (10 entrées)"}}, {"model": "Myevol_app.notification", "pk": 1, "fields": {"user": 1, "message": "🎉 Nouveau badge : Première entrée !", "is_read": true, "created_at": "2025-04-11T21:03:08.739Z"}}, {"model": "Myevol_app.notification", "pk": 2, "fields": {"user": 1, "message": "🏆 Félicitations, tu as atteint le Niveau 1 !", "is_read": true, "created_at": "2025-04-11T21:03:08.767Z"}}]
+
+
+================================================
+FILE: ingest.md
+================================================
 Directory structure:
 └── d-abd-evol_dj.git/
     ├── README.md
@@ -7657,618 +7922,4 @@ class QuoteSearchSerializer(serializers.Serializer):
         """
         Effectue une recherche dans les citations selon les critères fournis.
         """
-        query = instance.get('query', '').strip()
-        author = instance.get('author', '').strip()
-        mood_tag = instance.get('mood_tag', '').strip()
-        
-        if not query and not author and not mood_tag:
-            return {
-                'success': False,
-                'message': "Veuillez fournir au moins un critère de recherche."
-            }
-        
-        quotes = Quote.objects.all()
-        
-        if query:
-            quotes = quotes.filter(text__icontains=query)
-        
-        if author:
-            quotes = quotes.filter(author__icontains=author)
-        
-        if mood_tag:
-            quotes = quotes.filter(mood_tag=mood_tag)
-        
-        results = quotes.order_by('author') if quotes.exists() else Quote.objects.none()
-        
-        return {
-            'success': True,
-            'count': results.count(),
-            'results': QuoteSerializer(results, many=True).data
-        }
-
-
-
-================================================
-FILE: Myevol_app/serializers/stats_serializers.py
-================================================
-from rest_framework import serializers
-from django.utils import timezone
-from django.db.models import Count
-from datetime import timedelta
-from collections import OrderedDict
-from django.contrib.auth import get_user_model
-
-from ..models.stats_model import DailyStat, WeeklyStat, MonthlyStat, AnnualStat
-
-User = get_user_model()
-
-class DailyStatSerializer(serializers.ModelSerializer):
-    """Serializer pour les statistiques journalières."""
-    day_of_week = serializers.SerializerMethodField()
-    is_weekend = serializers.SerializerMethodField()
-    date_formatted = serializers.SerializerMethodField()
-    top_category = serializers.SerializerMethodField()
-    user_username = serializers.ReadOnlyField(source='user.username')
-
-    class Meta:
-        model = DailyStat
-        fields = [
-            'id', 'user', 'user_username', 'date', 'date_formatted',
-            'entries_count', 'mood_average', 'categories',
-            'day_of_week', 'is_weekend', 'top_category'
-        ]
-        read_only_fields = fields
-
-    def get_day_of_week(self, obj):
-        return obj.day_of_week()
-
-    def get_is_weekend(self, obj):
-        return obj.is_weekend()
-
-    def get_date_formatted(self, obj):
-        return obj.date.strftime('%d %B %Y')
-
-    def get_top_category(self, obj):
-        if not obj.categories:
-            return None
-        return max(obj.categories.items(), key=lambda x: x[1])[0]
-
-
-class WeeklyStatSerializer(serializers.ModelSerializer):
-    """Serializer pour les statistiques hebdomadaires."""
-    week_end = serializers.SerializerMethodField()
-    week_number = serializers.SerializerMethodField()
-    top_category = serializers.SerializerMethodField()
-    date_range = serializers.SerializerMethodField()
-    user_username = serializers.ReadOnlyField(source='user.username')
-
-    class Meta:
-        model = WeeklyStat
-        fields = [
-            'id', 'user', 'user_username', 'week_start', 'week_end',
-            'week_number', 'entries_count', 'mood_average',
-            'categories', 'top_category', 'date_range'
-        ]
-        read_only_fields = fields
-
-    def get_week_end(self, obj):
-        return obj.week_end()
-
-    def get_week_number(self, obj):
-        return obj.week_number()
-
-    def get_top_category(self, obj):
-        if not obj.categories:
-            return None
-        return max(obj.categories.items(), key=lambda x: x[1])[0]
-
-    def get_date_range(self, obj):
-        week_end = obj.week_end()
-        return {
-            'start': obj.week_start.strftime('%d/%m/%Y'),
-            'end': week_end.strftime('%d/%m/%Y'),
-            'display': f"Du {obj.week_start.strftime('%d %B')} au {week_end.strftime('%d %B %Y')}"
-        }
-
-
-class MonthlyStatSerializer(serializers.ModelSerializer):
-    """Serializer pour les statistiques mensuelles."""
-    month_end = serializers.SerializerMethodField()
-    month_name = serializers.SerializerMethodField()
-    top_category = serializers.SerializerMethodField()
-    date_range = serializers.SerializerMethodField()
-    user_username = serializers.ReadOnlyField(source='user.username')
-
-    class Meta:
-        model = MonthlyStat
-        fields = [
-            'id', 'user', 'user_username', 'month_start', 'month_end',
-            'month_name', 'entries_count', 'mood_average',
-            'categories', 'top_category', 'date_range'
-        ]
-        read_only_fields = fields
-
-    def get_month_end(self, obj):
-        """Retourne le dernier jour du mois."""
-        next_month = (obj.month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
-        return next_month - timedelta(days=1)
-
-    def get_month_name(self, obj):
-        return obj.month_start.strftime('%B %Y')
-
-    def get_top_category(self, obj):
-        if not obj.categories:
-            return None
-        return max(obj.categories.items(), key=lambda x: x[1])[0]
-
-    def get_date_range(self, obj):
-        month_end = self.get_month_end(obj)
-        return {
-            'start': obj.month_start.strftime('%d/%m/%Y'),
-            'end': month_end.strftime('%d/%m/%Y'),
-            'display': f"Du {obj.month_start.strftime('%d %B')} au {month_end.strftime('%d %B %Y')}"
-        }
-
-
-
-class AnnualStatSerializer(serializers.ModelSerializer):
-    """Serializer pour les statistiques annuelles."""
-    year_end = serializers.SerializerMethodField()
-    year = serializers.SerializerMethodField()
-    top_category = serializers.SerializerMethodField()
-    user_username = serializers.ReadOnlyField(source='user.username')
-
-    class Meta:
-        model = AnnualStat
-        fields = [
-            'id', 'user', 'user_username', 'year_start', 'year_end',
-            'year', 'entries_count', 'mood_average',
-            'categories', 'top_category'
-        ]
-        read_only_fields = fields
-
-    def get_year_end(self, obj):
-        return obj.year_start.replace(month=12, day=31)
-
-    def get_year(self, obj):
-        return obj.year_start.year
-
-    def get_top_category(self, obj):
-        if not obj.categories:
-            return None
-        return max(obj.categories.items(), key=lambda x: x[1])[0]
-
-
-class StatsOverviewSerializer(serializers.Serializer):
-    """Serializer pour afficher un résumé global des statistiques."""
-    daily = serializers.SerializerMethodField()
-    weekly = serializers.SerializerMethodField()
-    monthly = serializers.SerializerMethodField()
-    annual = serializers.SerializerMethodField()
-    trends = serializers.SerializerMethodField()
-
-    def get_daily(self, user):
-        today = timezone.now().date()
-        stat, _ = DailyStat.objects.get_or_create(user=user, date=today)
-        return DailyStatSerializer(stat).data
-
-    def get_weekly(self, user):
-        today = timezone.now().date()
-        week_start = today - timedelta(days=today.weekday())
-        stat, _ = WeeklyStat.objects.get_or_create(user=user, week_start=week_start)
-        return WeeklyStatSerializer(stat).data
-
-    def get_monthly(self, user):
-        today = timezone.now().date()
-        month_start = today.replace(day=1)
-        stat, _ = MonthlyStat.objects.get_or_create(user=user, month_start=month_start)
-        return MonthlyStatSerializer(stat).data
-
-    def get_annual(self, user):
-        today = timezone.now().date()
-        year_start = today.replace(month=1, day=1)
-        stat, _ = AnnualStat.objects.get_or_create(user=user, year_start=year_start)
-        return AnnualStatSerializer(stat).data
-
-    def get_trends(self, user):
-        today = timezone.now().date()
-        daily_stats = DailyStat.objects.filter(user=user, date__gte=today - timedelta(days=30)).order_by('date')
-
-        if not daily_stats.exists():
-            return {
-                'entries_trend': 'stable',
-                'mood_trend': 'stable',
-                'entries_change': 0,
-                'mood_change': 0,
-                'most_active_day': None,
-                'best_mood_day': None
-            }
-
-        past_15_days = daily_stats.filter(date__gte=today - timedelta(days=15))
-        previous_15_days = daily_stats.filter(date__lt=today - timedelta(days=15))
-
-        recent_entries_avg = sum(s.entries_count for s in past_15_days) / max(1, len(past_15_days))
-        previous_entries_avg = sum(s.entries_count for s in previous_15_days) / max(1, len(previous_15_days))
-
-        recent_moods = [s.mood_average for s in past_15_days if s.mood_average is not None]
-        previous_moods = [s.mood_average for s in previous_15_days if s.mood_average is not None]
-
-        recent_mood_avg = sum(recent_moods) / max(1, len(recent_moods)) if recent_moods else 0
-        previous_mood_avg = sum(previous_moods) / max(1, len(previous_moods)) if previous_moods else 0
-
-        entries_change = recent_entries_avg - previous_entries_avg
-        mood_change = recent_mood_avg - previous_mood_avg
-
-        entries_trend = 'up' if entries_change > 0.5 else ('down' if entries_change < -0.5 else 'stable')
-        mood_trend = 'up' if mood_change > 0.5 else ('down' if mood_change < -0.5 else 'stable')
-
-        most_active = max(daily_stats, key=lambda s: s.entries_count, default=None)
-        best_mood = max((s for s in daily_stats if s.mood_average is not None), key=lambda s: s.mood_average, default=None)
-
-        return {
-            'entries_trend': entries_trend,
-            'mood_trend': mood_trend,
-            'entries_change': round(entries_change, 1),
-            'mood_change': round(mood_change, 1),
-            'most_active_day': {
-                'date': most_active.date.strftime('%d/%m/%Y'),
-                'day_of_week': most_active.day_of_week(),
-                'entries_count': most_active.entries_count
-            } if most_active else None,
-            'best_mood_day': {
-                'date': best_mood.date.strftime('%d/%m/%Y'),
-                'day_of_week': best_mood.day_of_week(),
-                'mood_average': best_mood.mood_average
-            } if best_mood else None
-        }
-
-class StatsCategoryAnalysisSerializer(serializers.Serializer):
-    """Serializer pour l'analyse des catégories."""
-    period = serializers.ChoiceField(choices=['week', 'month', 'year', 'all'], default='month')
-
-    def to_representation(self, instance):
-        user = instance.get('user')
-        period = instance.get('period', 'month')
-
-        if not user:
-            return {'error': 'Utilisateur non spécifié'}
-
-        today = timezone.now().date()
-
-        if period == 'week':
-            start_date = today - timedelta(days=today.weekday())
-            stat, _ = WeeklyStat.objects.get_or_create(user=user, week_start=start_date)
-        elif period == 'month':
-            start_date = today.replace(day=1)
-            stat, _ = MonthlyStat.objects.get_or_create(user=user, month_start=start_date)
-        elif period == 'year':
-            start_date = today.replace(month=1, day=1)
-            stat, _ = AnnualStat.objects.get_or_create(user=user, year_start=start_date)
-        else:  # all
-            stats = AnnualStat.objects.filter(user=user)
-            if not stats.exists():
-                return {
-                    'title': "Analyse de toutes les entrées",
-                    'categories': {},
-                    'total_entries': 0,
-                    'period': period
-                }
-            categories = {}
-            total_entries = 0
-            for stat in stats:
-                total_entries += stat.entries_count
-                for category, count in stat.categories.items():
-                    categories[category] = categories.get(category, 0) + count
-            return {
-                'title': "Analyse de toutes les entrées",
-                'categories': OrderedDict(sorted({
-                    k: {'count': v, 'percentage': round((v/total_entries)*100, 1) if total_entries > 0 else 0}
-                    for k, v in categories.items()
-                }.items(), key=lambda x: x[1]['count'], reverse=True)),
-                'total_entries': total_entries,
-                'period': period
-            }
-
-        categories = {
-            k: {
-                'count': v,
-                'percentage': round((v / stat.entries_count) * 100, 1) if stat.entries_count > 0 else 0
-            }
-            for k, v in stat.categories.items()
-        }
-
-        return {
-            'title': f"Analyse des entrées - {period}",
-            'categories': OrderedDict(sorted(categories.items(), key=lambda x: x[1]['count'], reverse=True)),
-            'total_entries': stat.entries_count,
-            'period': period,
-            'date_range': {
-                'start': start_date.strftime('%d/%m/%Y'),
-                'end': (start_date + timedelta(days=6) if period == 'week' else
-                        (start_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-                        if period == 'month' else
-                        start_date.replace(month=12, day=31)
-                    ).strftime('%d/%m/%Y')
-            }
-        }
-
-
-
-
-================================================
-FILE: Myevol_app/serializers/user_serializers.py
-================================================
-from rest_framework import serializers
-from django.utils import timezone
-from django.contrib.auth import get_user_model
-from datetime import timedelta
-from collections import OrderedDict
-from django.db.models import Count
-
-User = get_user_model()
-
-
-class UserSerializer(serializers.ModelSerializer):
-    """
-    Serializer pour le modèle User.
     
-    Expose les informations de base de l'utilisateur.
-    """
-    full_name = serializers.SerializerMethodField()
-    short_name = serializers.SerializerMethodField()
-    total_entries = serializers.ReadOnlyField()
-    current_streak = serializers.SerializerMethodField()
-    level = serializers.SerializerMethodField()
-    level_progress = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = User
-        fields = [
-            'id', 'username', 'email', 'full_name', 'short_name',
-            'avatar_url', 'xp', 'total_entries', 'current_streak',
-            'longest_streak', 'level', 'level_progress', 'date_joined',
-            'last_login'
-        ]
-        read_only_fields = [
-            'total_entries', 'current_streak', 'longest_streak',
-            'level', 'level_progress', 'date_joined', 'last_login'
-        ]
-    
-    def get_full_name(self, obj):
-        """Retourne le nom complet de l'utilisateur."""
-        return obj.get_full_name()
-    
-    def get_short_name(self, obj):
-        """Retourne le prénom ou le username si le prénom est vide."""
-        return obj.get_short_name()
-    
-    def get_current_streak(self, obj):
-        """Retourne la série actuelle de jours consécutifs avec entrées."""
-        return obj.current_streak()
-    
-    def get_level(self, obj):
-        """Retourne le niveau actuel de l'utilisateur."""
-        return obj.level()
-    
-    def get_level_progress(self, obj):
-        """Retourne la progression du niveau actuel en pourcentage."""
-        return obj.level_progress()
-
-
-class UserProfileSerializer(UserSerializer):
-    """
-    Serializer pour le profil complet d'un utilisateur.
-    
-    Étend UserSerializer avec des statistiques supplémentaires.
-    """
-    mood_average = serializers.SerializerMethodField()
-    stats_summary = serializers.SerializerMethodField()
-    activity_summary = serializers.SerializerMethodField()
-    badges_count = serializers.SerializerMethodField()
-    
-    class Meta(UserSerializer.Meta):
-        fields = UserSerializer.Meta.fields + [
-            'mood_average', 'stats_summary', 'activity_summary',
-            'badges_count'
-        ]
-    
-    def get_mood_average(self, obj):
-        """Retourne la moyenne d'humeur sur différentes périodes."""
-        mood_7d = obj.mood_average(days=7)
-        mood_30d = obj.mood_average(days=30)
-        mood_all = obj.mood_average(days=None)
-        
-        return {
-            'week': round(mood_7d, 1) if mood_7d is not None else None,
-            'month': round(mood_30d, 1) if mood_30d is not None else None,
-            'all_time': round(mood_all, 1) if mood_all is not None else None
-        }
-    
-    def get_stats_summary(self, obj):
-        """Retourne un résumé des statistiques de l'utilisateur."""
-        return {
-            'total_entries': obj.total_entries,
-            'current_streak': obj.current_streak(),
-            'longest_streak': obj.longest_streak,
-            'level': obj.level(),
-            'xp': obj.xp
-        }
-    
-    def get_activity_summary(self, obj):
-        """Retourne un résumé de l'activité récente de l'utilisateur."""
-        today = timezone.now().date()
-        entries_today = obj.entries_today()
-        
-        # Calculer les entrées des 7 derniers jours
-        last_week = today - timedelta(days=7)
-        entries_last_week = obj.entries.filter(
-            created_at__date__gte=last_week
-        ).count()
-        
-        # Calculer les entrées des 30 derniers jours
-        last_month = today - timedelta(days=30)
-        entries_last_month = obj.entries.filter(
-            created_at__date__gte=last_month
-        ).count()
-        
-        # Déterminer si l'utilisateur est actif
-        is_active = entries_today > 0
-        
-        return {
-            'entries_today': entries_today,
-            'entries_last_week': entries_last_week,
-            'entries_last_month': entries_last_month,
-            'is_active_today': is_active,
-            'days_since_last_entry': 0 if is_active else self._days_since_last_entry(obj)
-        }
-    
-    def get_badges_count(self, obj):
-        """Retourne le nombre de badges de l'utilisateur."""
-        return obj.badges.count()
-    
-    def _days_since_last_entry(self, obj):
-        """Calcule le nombre de jours depuis la dernière entrée."""
-        today = timezone.now().date()
-        last_entry = obj.entries.order_by('-created_at').first()
-        
-        if not last_entry:
-            return None
-            
-        last_date = last_entry.created_at.date()
-        return (today - last_date).days
-
-
-class UserUpdateSerializer(serializers.ModelSerializer):
-    """
-    Serializer pour mettre à jour les informations de l'utilisateur.
-    
-    Permet de modifier le profil sans toucher aux champs sensibles.
-    """
-    current_password = serializers.CharField(
-        write_only=True,
-        required=False,
-        help_text="Mot de passe actuel (requis pour changer le mot de passe)"
-    )
-    new_password = serializers.CharField(
-        write_only=True,
-        required=False,
-        help_text="Nouveau mot de passe"
-    )
-    
-    class Meta:
-        model = User
-        fields = [
-            'username', 'email', 'first_name', 'last_name',
-            'avatar_url', 'current_password', 'new_password'
-        ]
-    
-    def validate(self, data):
-        """Validation des données de mise à jour du profil."""
-        # Si on essaie de changer le mot de passe
-        if 'new_password' in data:
-            # Le mot de passe actuel est obligatoire
-            if not data.get('current_password'):
-                raise serializers.ValidationError({
-                    'current_password': "Le mot de passe actuel est requis pour changer le mot de passe."
-                })
-            
-            # Vérifier que le mot de passe actuel est correct
-            if not self.instance.check_password(data.get('current_password')):
-                raise serializers.ValidationError({
-                    'current_password': "Le mot de passe actuel est incorrect."
-                })
-        
-        return data
-    
-    def update(self, instance, validated_data):
-        """Mise à jour de l'utilisateur avec gestion du mot de passe."""
-        # Gérer le changement de mot de passe séparément
-        if 'new_password' in validated_data:
-            instance.set_password(validated_data.pop('new_password'))
-        
-        # Supprimer le mot de passe actuel des données à mettre à jour
-        validated_data.pop('current_password', None)
-        
-        # Mettre à jour les autres champs
-        return super().update(instance, validated_data)
-
-
-class UserStatsSerializer(serializers.Serializer):
-    """
-    Serializer pour les statistiques détaillées d'un utilisateur.
-    
-    Fournit des insights sur l'activité et les performances de l'utilisateur.
-    """
-    mood_stats = serializers.SerializerMethodField()
-    streak_stats = serializers.SerializerMethodField()
-    activity_stats = serializers.SerializerMethodField()
-    category_distribution = serializers.SerializerMethodField()
-    
-    def get_mood_stats(self, user):
-        """Statistiques détaillées sur les humeurs de l'utilisateur."""
-        # Moyennes d'humeur sur différentes périodes
-        mood_7d = user.mood_average(days=7)
-        mood_30d = user.mood_average(days=30)
-        mood_90d = user.mood_average(days=90)
-        mood_all = user.mood_average(days=None)
-        
-        # Calcul de la tendance
-        trend = 'stable'
-        if mood_7d is not None and mood_30d is not None:
-            diff = mood_7d - mood_30d
-            if diff > 0.5:
-                trend = 'up'
-            elif diff < -0.5:
-                trend = 'down'
-        
-        # Répartition des humeurs
-        mood_distribution = list(user.entries.values('mood')
-                                 .annotate(count=Count('id'))
-                                 .order_by('mood'))
-        
-        return {
-            'averages': {
-                'week': round(mood_7d, 1) if mood_7d is not None else None,
-                'month': round(mood_30d, 1) if mood_30d is not None else None,
-                'quarter': round(mood_90d, 1) if mood_90d is not None else None,
-                'all_time': round(mood_all, 1) if mood_all is not None else None
-            },
-            'trend': trend,
-            'distribution': {
-                str(item['mood']): item['count'] for item in mood_distribution if item['mood'] is not None
-            }
-        }
-    
-    def get_streak_stats(self, user):
-        """Statistiques sur les séries d'entrées consécutives."""
-        return {
-            'current': user.current_streak(),
-            'longest': user.longest_streak,
-            'has_entry_today': user.entries_today() > 0
-        }
-    
-    def get_activity_stats(self, user):
-        """Statistiques sur l'activité générale de l'utilisateur."""
-        today = timezone.now().date()
-        
-        # Entrées par jour de la semaine
-        from django.db.models import Count
-        from django.db.models.functions import ExtractWeekDay
-        
-        weekday_counts = list(user.entries
-                              .annotate(weekday=ExtractWeekDay('created_at'))
-                              .values('weekday')
-                              .annotate(count=Count('id'))
-                              .order_by('weekday'))
-        
-        # Convertir en format jour de la semaine (0=Lundi, 6=Dimanche)
-        weekday_names = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
-        weekday_distribution = {}
-        
-        for day in range(7):
-            # Rechercher le jour dans les résultats
-            count_entry = next((item for item in weekday_counts if item['weekday'] == day + 1), None)
-            weekday_distribution[weekday_names[day]] = count_entry['count'] if count_entry else 0
-        
-        # Calculer les entrées par mois (12 derniers mois)
-        from django.db.models.functions 

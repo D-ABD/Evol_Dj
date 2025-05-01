@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'corsheaders',  # pour autoriser l'accès depuis Expo
     'rest_framework_simplejwt',
     'rest_framework.authtoken',  # seulement si tu veux aussi gérer des tokens classiques
+    'django_extensions',
 
 
 
@@ -229,7 +230,7 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_PAGINATION_CLASS': 'Myevol_app.paginations.MyEvolPagination',
     'PAGE_SIZE': 10,  # Par exemple 10 badges par page
 }
 
@@ -253,6 +254,7 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': "Documentation complète de l'API MyEvol pour l'application mobile et web.",
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    
 
     # Ajouts recommandés
     'COMPONENT_SPLIT_REQUEST': True,
@@ -268,6 +270,8 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Notifications', 'description': 'Système de notifications'},
         {'name': 'Challenges', 'description': 'Défis et compétitions'},
     ],
+    'COMPONENT_NO_READ_ONLY_REQUIRED': True,
+    'SCHEMA_PATH_PREFIX_TRIM': True,
 }
 
 

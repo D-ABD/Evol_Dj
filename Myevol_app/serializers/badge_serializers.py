@@ -62,6 +62,8 @@ class BadgeTemplateSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'icon', 'condition', 
             'level', 'animation_url', 'color_theme', 'level_number'
         ]
+        read_only_fields = ['id']
+
     
     def get_level_number(self, obj):
         """
@@ -70,6 +72,14 @@ class BadgeTemplateSerializer(serializers.ModelSerializer):
         """
         return obj.extract_level_number()
 
+    def validate_color_theme(self, value):
+        """
+        Valide que la couleur est bien au format hexadécimal #RRGGBB.
+        """
+        import re
+        if not re.match(r"^#(?:[0-9a-fA-F]{3}){1,2}$", value):
+            raise serializers.ValidationError("La couleur doit être au format HEX (#RRGGBB).")
+        return value
 
 class BadgeTemplateWithProgressSerializer(BadgeTemplateSerializer):
     """

@@ -156,25 +156,22 @@ class StatsOverviewSerializer(serializers.Serializer):
 
     def get_daily(self, user):
         today = timezone.now().date()
-        stat, _ = DailyStat.objects.get_or_create(user=user, date=today)
+        stat = DailyStat.generate_for_user(user, today)
         return DailyStatSerializer(stat).data
 
     def get_weekly(self, user):
         today = timezone.now().date()
-        week_start = today - timedelta(days=today.weekday())
-        stat, _ = WeeklyStat.objects.get_or_create(user=user, week_start=week_start)
+        stat = WeeklyStat.generate_for_user(user, today)
         return WeeklyStatSerializer(stat).data
 
     def get_monthly(self, user):
         today = timezone.now().date()
-        month_start = today.replace(day=1)
-        stat, _ = MonthlyStat.objects.get_or_create(user=user, month_start=month_start)
+        stat = MonthlyStat.generate_for_user(user, today)
         return MonthlyStatSerializer(stat).data
 
     def get_annual(self, user):
         today = timezone.now().date()
-        year_start = today.replace(month=1, day=1)
-        stat, _ = AnnualStat.objects.get_or_create(user=user, year_start=year_start)
+        stat = AnnualStat.generate_for_user(user, today)
         return AnnualStatSerializer(stat).data
 
     def get_trends(self, user):
@@ -229,6 +226,7 @@ class StatsOverviewSerializer(serializers.Serializer):
             } if best_mood else None
         }
 
+
 class StatsCategoryAnalysisSerializer(serializers.Serializer):
     """Serializer pour l'analyse des catégories."""
     period = serializers.ChoiceField(choices=['week', 'month', 'year', 'all'], default='month')
@@ -243,14 +241,14 @@ class StatsCategoryAnalysisSerializer(serializers.Serializer):
         today = timezone.now().date()
 
         if period == 'week':
-            start_date = today - timedelta(days=today.weekday())
-            stat, _ = WeeklyStat.objects.get_or_create(user=user, week_start=start_date)
+            stat = WeeklyStat.generate_for_user(user, today)
+            start_date = stat.week_start
         elif period == 'month':
-            start_date = today.replace(day=1)
-            stat, _ = MonthlyStat.objects.get_or_create(user=user, month_start=start_date)
+            stat = MonthlyStat.generate_for_user(user, today)
+            start_date = stat.month_start
         elif period == 'year':
-            start_date = today.replace(month=1, day=1)
-            stat, _ = AnnualStat.objects.get_or_create(user=user, year_start=start_date)
+            stat = AnnualStat.generate_for_user(user, today)
+            start_date = stat.year_start
         else:  # all
             stats = AnnualStat.objects.filter(user=user)
             if not stats.exists():
@@ -269,7 +267,7 @@ class StatsCategoryAnalysisSerializer(serializers.Serializer):
             return {
                 'title': "Analyse de toutes les entrées",
                 'categories': OrderedDict(sorted({
-                    k: {'count': v, 'percentage': round((v/total_entries)*100, 1) if total_entries > 0 else 0}
+                    k: {'count': v, 'percentage': round((v / total_entries) * 100, 1) if total_entries > 0 else 0}
                     for k, v in categories.items()
                 }.items(), key=lambda x: x[1]['count'], reverse=True)),
                 'total_entries': total_entries,
@@ -284,6 +282,13 @@ class StatsCategoryAnalysisSerializer(serializers.Serializer):
             for k, v in stat.categories.items()
         }
 
+        end_date = (
+            start_date + timedelta(days=6) if period == 'week' else
+            (start_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+            if period == 'month' else
+            start_date.replace(month=12, day=31)
+        )
+
         return {
             'title': f"Analyse des entrées - {period}",
             'categories': OrderedDict(sorted(categories.items(), key=lambda x: x[1]['count'], reverse=True)),
@@ -291,11 +296,6 @@ class StatsCategoryAnalysisSerializer(serializers.Serializer):
             'period': period,
             'date_range': {
                 'start': start_date.strftime('%d/%m/%Y'),
-                'end': (start_date + timedelta(days=6) if period == 'week' else
-                        (start_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-                        if period == 'month' else
-                        start_date.replace(month=12, day=31)
-                    ).strftime('%d/%m/%Y')
+                'end': end_date.strftime('%d/%m/%Y')
             }
         }
-

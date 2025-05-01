@@ -17,7 +17,7 @@ from ..services.levels_services import get_user_progress
 from ..services.badge_service import update_user_badges
 from ..services.streak_service import update_user_streak
 from ..services.userpreference_service import create_or_update_preferences
-from ..services.user_stats_service import compute_mood_average, compute_current_streak
+from ..services.user_stats_service import compute_current_streak, compute_mood_average
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,6 @@ class User(AbstractUser):
         return self.entries.count()
 
     def mood_average(self, days=7, category=None):
-        from Myevol_app.models.user_model import compute_mood_average
         return compute_mood_average(self, days, category)
 
 
@@ -228,6 +227,7 @@ class User(AbstractUser):
 
     @receiver(post_save, sender='Myevol_app.User')
     @receiver(post_delete, sender='Myevol_app.User')
+    
     def invalidate_cache(sender, instance, **kwargs):
         """
         Invalide le cache des statistiques par catégorie lors d'une sauvegarde

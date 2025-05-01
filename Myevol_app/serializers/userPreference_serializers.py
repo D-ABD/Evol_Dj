@@ -68,13 +68,15 @@ class UserPreferenceUpdateSerializer(serializers.ModelSerializer):
         return value
     
     def update(self, instance, validated_data):
-        """Mise à jour des préférences utilisateur."""
-        # Mise à jour et journalisation
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        
-        instance.save()
-        return instance
+        """
+        Mise à jour des préférences de l'utilisateur.
+        """
+        from ..services.userpreference_service import create_or_update_preferences
+
+        user = instance.user  # 🟢 Correction ici
+        updated_prefs = create_or_update_preferences(user, validated_data)
+
+        return updated_prefs
 
 
 class AppearancePreferenceSerializer(serializers.ModelSerializer):

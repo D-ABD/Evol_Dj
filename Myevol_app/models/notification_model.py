@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.utils.timezone import now
 import logging
+from django.core.exceptions import ValidationError
 
 User = settings.AUTH_USER_MODEL
 logger = logging.getLogger(__name__)
@@ -133,3 +134,8 @@ class Notification(models.Model):
         )
         logger.info(f"[NOTIF] Nouvelle notification '{notif_type}' créée pour {user.username}")
         return notif
+
+    def clean(self):
+        """Validation renforcée pour garantir un type de notification valide."""
+        if self.notif_type not in dict(self.NOTIF_TYPES):
+            raise ValidationError({'notif_type': f"Type de notification invalide : {self.notif_type}"})

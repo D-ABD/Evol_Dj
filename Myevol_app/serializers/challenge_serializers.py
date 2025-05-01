@@ -20,11 +20,27 @@ class ChallengeSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Challenge
-        fields = [
-            'id', 'title', 'description', 'start_date', 'end_date', 
-            'target_entries', 'is_active', 'days_remaining', 'participants_count'
-        ]
-        read_only_fields = ['is_active', 'days_remaining', 'participants_count']
+        fields = ['id', 'title', 'description', 'start_date', 'end_date',
+                  'is_active', 'days_remaining', 'participants_count']
+        read_only_fields = ['id', 'is_active', 'days_remaining', 'participants_count']
+
+    def validate_start_date(self, value):
+        """
+        Valide que la date de début n'est pas dans le passé.
+        """
+        if value < timezone.now().date():
+            raise serializers.ValidationError("La date de début ne peut pas être dans le passé.")
+        return value
+
+    def validate(self, data):
+        """
+        Valide que start_date < end_date.
+        """
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        if start_date and end_date and start_date > end_date:
+            raise serializers.ValidationError("La date de début doit être avant la date de fin.")
+        return data
 
 
 class ChallengeProgressSerializer(serializers.ModelSerializer):
@@ -75,7 +91,6 @@ class ChallengeDetailSerializer(ChallengeSerializer):
         user = self._get_user()
         if not user or not user.is_authenticated:
             return None
-            
         return obj.get_progress(user)
     
     def get_joined(self, obj):
@@ -85,14 +100,12 @@ class ChallengeDetailSerializer(ChallengeSerializer):
         user = self._get_user()
         if not user or not user.is_authenticated:
             return False
-            
         return ChallengeProgress.objects.filter(user=user, challenge=obj).exists()
     
     def _get_user(self):
         """
         Récupère l'utilisateur à partir du contexte.
         """
-        # D'abord vérifier un utilisateur spécifique fourni
         user_id = self.context.get('user_id')
         if user_id:
             try:
@@ -100,11 +113,9 @@ class ChallengeDetailSerializer(ChallengeSerializer):
             except User.DoesNotExist:
                 pass
         
-        # Sinon utiliser l'utilisateur de la requête
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             return request.user
-            
         return None
 
 
@@ -132,7 +143,6 @@ class UserChallengeStatsSerializer(serializers.Serializer):
             challenge__end_date__gte=today,
             completed=False
         ).select_related('challenge')
-        
         return ChallengeProgressSerializer(progresses, many=True).data
     
     def get_completed_challenges(self, user):
@@ -144,13 +154,7 @@ class UserChallengeStatsSerializer(serializers.Serializer):
         """Liste des défis disponibles non rejoints par l'utilisateur."""
         today = timezone.now().date()
         joined_ids = user.challenges.values_list('challenge_id', flat=True)
-        
-        available = Challenge.objects.filter(
-            end_date__gte=today
-        ).exclude(
-            id__in=joined_ids
-        )
-        
+        available = Challenge.objects.filter(end_date__gte=today).exclude(id__in=joined_ids)
         return ChallengeSerializer(available, many=True).data
     
     def get_completion_rate(self, user):
@@ -158,7 +162,6 @@ class UserChallengeStatsSerializer(serializers.Serializer):
         total = user.challenges.count()
         if total == 0:
             return 0
-        
         completed = user.challenges.filter(completed=True).count()
         return round((completed / total) * 100, 1)
 

@@ -272,3 +272,8 @@ class UserPreference(models.Model):
 
     Ces signaux permettent d'automatiser la gestion des préférences et d'intégrer facilement la logique de gestion des notifications et des actions utilisateur via des services.
 """
+def clean(self):
+    """Validation des préférences utilisateur avant sauvegarde."""
+    super().clean()
+    if not re.match(r"^#(?:[0-9a-fA-F]{3}){1,2}$", self.accent_color):
+        raise ValidationError({'accent_color': "La couleur doit être un code HEX valide (ex: #FFFFFF)."})

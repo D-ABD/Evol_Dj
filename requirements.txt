@@ -14,11 +14,14 @@ cron-descriptor==1.4.5
 Django==4.2.20
 django-celery-beat==2.8.0
 django-cors-headers==4.7.0
+django-extensions==4.1
 django-timezone-field==7.1
 djangorestframework==3.16.0
 djangorestframework_simplejwt==5.5.0
 drf-spectacular==0.28.0
 exceptiongroup==1.2.2
+factory_boy==3.3.3
+Faker==37.1.0
 flower==2.0.1
 freezegun==1.5.1
 humanize==4.12.2

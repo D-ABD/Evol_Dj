@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from rest_framework.test import APIClient
 from Myevol_app.models.userPreference_model import UserPreference
 from Myevol_app.serializers.userPreference_serializers import (
     UserPreferenceUpdateSerializer, 
@@ -7,35 +8,34 @@ from Myevol_app.serializers.userPreference_serializers import (
     NotificationToggleSerializer, PreferenceResetSerializer, 
     UserPreferenceCreateSerializer,
 )
-from Myevol_app.serializers.user_serializers import UserPreferencesSerializer
+from tests.tests_viewsets.factories import UserFactory
 
 User = get_user_model()
 
 class UserPreferenceSerializerTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='testuser', email='test@example.com', password='password')
-        self.prefs = UserPreference.get_or_create_for_user(self.user)  # ✅ get_or_create évite les doublons
+        self.user = UserFactory()
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.pref, _ = UserPreference.objects.get_or_create(user=self.user)
 
     def _create_user(self, username, email):
         return User.objects.create_user(username=username, email=email, password="password123")
 
-
-
-
     def test_update_preference_serializer_valid(self):
-        serializer = UserPreferenceUpdateSerializer(instance=self.prefs, data={'dark_mode': True})
+        serializer = UserPreferenceUpdateSerializer(instance=self.pref, data={'dark_mode': True})
         self.assertTrue(serializer.is_valid(), serializer.errors)
         updated_prefs = serializer.save()
         self.assertTrue(updated_prefs.dark_mode)
 
     def test_appearance_preference_serializer(self):
-        serializer = AppearancePreferenceSerializer(instance=self.prefs)
+        serializer = AppearancePreferenceSerializer(instance=self.pref)
         data = serializer.data
         self.assertIn('dark_mode', data)
         self.assertIn('accent_color', data)
 
     def test_notification_preference_serializer(self):
-        serializer = NotificationPreferenceSerializer(instance=self.prefs)
+        serializer = NotificationPreferenceSerializer(instance=self.pref)
         data = serializer.data
         self.assertIn('badge', data)
         self.assertIn('objectif', data)
@@ -43,29 +43,29 @@ class UserPreferenceSerializerTests(TestCase):
         self.assertIn('statistique', data)
 
     def test_notification_toggle_serializer_enable(self):
-        serializer = NotificationToggleSerializer(instance=self.prefs, data={
+        serializer = NotificationToggleSerializer(instance=self.pref, data={
             'notif_type': 'badge',
             'enabled': True
         })
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        updated_prefs = serializer.update(self.prefs, serializer.validated_data)
+        updated_prefs = serializer.update(self.pref, serializer.validated_data)
         self.assertTrue(updated_prefs.notif_badge)
 
     def test_notification_toggle_serializer_disable(self):
-        serializer = NotificationToggleSerializer(instance=self.prefs, data={
+        serializer = NotificationToggleSerializer(instance=self.pref, data={
             'notif_type': 'badge',
             'enabled': False
         })
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        updated_prefs = serializer.update(self.prefs, serializer.validated_data)
+        updated_prefs = serializer.update(self.pref, serializer.validated_data)
         self.assertFalse(updated_prefs.notif_badge)
 
     def test_preference_reset_serializer(self):
-        self.prefs.dark_mode = True
-        self.prefs.save()
-        serializer = PreferenceResetSerializer(instance=self.prefs, data={'confirm': True})
+        self.pref.dark_mode = True
+        self.pref.save()
+        serializer = PreferenceResetSerializer(instance=self.pref, data={'confirm': True})
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        reset_prefs = serializer.update(self.prefs, serializer.validated_data)
+        reset_prefs = serializer.update(self.pref, serializer.validated_data)
         self.assertFalse(reset_prefs.dark_mode)
 
     def test_user_preference_create_serializer(self):
@@ -91,4 +91,3 @@ class UserPreferenceSerializerTests(TestCase):
         self.assertEqual(instance.user, self.user)
         self.assertEqual(instance.accent_color, '#FF5733')
         self.assertFalse(instance.enable_animations)
-

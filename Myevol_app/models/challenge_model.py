@@ -5,6 +5,7 @@ from django.utils.timezone import now
 from django.urls import reverse
 from django.conf import settings
 import logging
+from django.core.exceptions import ValidationError
 
 
 
@@ -112,7 +113,10 @@ class Challenge(models.Model):
         
         if is_new:
             logger.info(f"Création d'un nouveau défi : {self.title} (ID: {self.id})")
-
+    def clean(self):
+        """Validation des contraintes métier du défi."""
+        if self.start_date > self.end_date:
+            raise ValidationError("La date de début doit précéder la date de fin.")
 
 class ChallengeProgress(models.Model):
     """

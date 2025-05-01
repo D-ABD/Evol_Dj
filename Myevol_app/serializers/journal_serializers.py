@@ -151,18 +151,25 @@ class JournalEntryCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = JournalEntry
-        fields = ['content', 'mood', 'category', 'media_files', 'media_types']
-    
+        fields = ['id', 'content', 'mood', 'category', 'media_files', 'media_types']
+        read_only_fields = ['id']
+
     def validate(self, data):
-        """Valide la correspondance entre fichiers et types associés."""
         media_files = data.get('media_files', [])
         media_types = data.get('media_types', [])
-        
         if len(media_files) != len(media_types):
-            raise serializers.ValidationError(
-                "Le nombre de fichiers et de types de médias doit correspondre."
-            )
+            raise serializers.ValidationError("Le nombre de fichiers et de types de médias doit correspondre.")
         return data
+
+    def create(self, validated_data):
+        media_files = validated_data.pop('media_files', [])
+        media_types = validated_data.pop('media_types', [])
+        request = self.context.get('request')
+        validated_data['user'] = request.user
+        entry = JournalEntry.objects.create(**validated_data)
+        for file, type in zip(media_files, media_types):
+            JournalMedia.objects.create(entry=entry, file=file, type=type)
+        return entry
     
     def validate_content(self, value):
         """Valide que le contenu est d'une longueur suffisante."""
@@ -170,44 +177,6 @@ class JournalEntryCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Le contenu doit comporter au moins 5 caractères.")
         return value
 
-    def create(self, validated_data):
-        """Crée une entrée et ses médias associés."""
-        media_files = validated_data.pop('media_files', [])
-        media_types = validated_data.pop('media_types', [])
-        
-        request = self.context.get('request')
-        validated_data['user'] = request.user
-        entry = JournalEntry.objects.create(**validated_data)
-        
-        for file, type in zip(media_files, media_types):
-            JournalMedia.objects.create(entry=entry, file=file, type=type)
-        
-        return entry
-    
-    def validate(self, data):
-        """Valide la correspondance entre fichiers et types associés."""
-        media_files = data.get('media_files', [])
-        media_types = data.get('media_types', [])
-        
-        if len(media_files) != len(media_types):
-            raise serializers.ValidationError(
-                "Le nombre de fichiers et de types de médias doit correspondre."
-            )
-        return data
-    
-    def create(self, validated_data):
-        """Crée une entrée et ses médias associés."""
-        media_files = validated_data.pop('media_files', [])
-        media_types = validated_data.pop('media_types', [])
-        
-        request = self.context.get('request')
-        validated_data['user'] = request.user
-        entry = JournalEntry.objects.create(**validated_data)
-        
-        for file, type in zip(media_files, media_types):
-            JournalMedia.objects.create(entry=entry, file=file, type=type)
-        
-        return entry
 
 
 class JournalEntryCalendarSerializer(serializers.ModelSerializer):
