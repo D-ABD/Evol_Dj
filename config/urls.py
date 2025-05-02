@@ -6,7 +6,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # API
-    path('api/', include('Myevol_app.api_urls')),
+    path('api/', include('Myevol_app.api_urls')),  # ✅ PAS de double /api
 
     # Documentation de l'API
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
