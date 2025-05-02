@@ -1,5 +1,5 @@
 git add .
-git commit -m " configuration pour API et auth + refonte settings(env.example, check_env.py)Creation d'une vue test temporaire_viewset et correction de permissions "
+git commit -m " ajout de me_viewset(infos du user), réparation des fichiers admin, ajout de serializers et viewset pour login/logout "
 git push origin main
 
 

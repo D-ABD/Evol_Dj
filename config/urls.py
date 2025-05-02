@@ -2,7 +2,10 @@ from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
+from Myevol_app.views import admin_logout_view
+
 urlpatterns = [
+    path('admin/logout/', admin_logout_view, name='admin_logout'),  
     path('admin/', admin.site.urls),
 
     # API

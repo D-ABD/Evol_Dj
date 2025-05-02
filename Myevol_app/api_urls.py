@@ -8,10 +8,13 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
+from Myevol_app.viewsets.auth_viewset import EmailTokenObtainPairView
 from Myevol_app.viewsets.badge_viewset import BadgeTemplateViewSet, BadgeViewSet
 from Myevol_app.viewsets.challenge_viewset import ChallengeProgressViewSet, ChallengeViewSet
 from Myevol_app.viewsets.event_log_viewset import EventLogViewSet
 from Myevol_app.viewsets.journal_viewset import JournalEntryViewSet
+from Myevol_app.viewsets.login_logout_viewset import LoginAPIView, LogoutAPIView
+from Myevol_app.viewsets.me_viewset import me_view
 from Myevol_app.viewsets.notification_viewset import NotificationViewSet
 from Myevol_app.viewsets.objective_viewset import ObjectiveViewSet
 from Myevol_app.viewsets.quote_viewset import QuoteViewSet
@@ -45,10 +48,12 @@ router.register(r'user-preferences', UserPreferenceViewSet, basename='userprefer
 
 
 urlpatterns = router.urls + [
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/', EmailTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
+    path('login/', LoginAPIView.as_view(), name='api_login'),
+    path('logout/', LogoutAPIView.as_view(), name='api_logout'),
 
+    path('api/me/', me_view, name='me'),
     path('test-token/', test_token_view),
-
 ]

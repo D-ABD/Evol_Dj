@@ -21,4 +21,6 @@ urlpatterns = [
 
     # Authentification
     path('logout/', views.logout_view, name='logout'),  # à ajuster si besoin
+
+    
 ]
